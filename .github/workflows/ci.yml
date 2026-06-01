@@ -92,7 +92,7 @@ jobs:
       - run: pip install poetry==${{ env.POETRY_VERSION }}
       - run: poetry install --with dev --no-interaction
       - run: poetry run pytest tests/unit -n auto --cov --cov-report=xml
-      - uses: codecov/codecov-action@v4
+      - uses: codecov/codecov-action@v6
         if: always()
         with:
           files: coverage.xml
