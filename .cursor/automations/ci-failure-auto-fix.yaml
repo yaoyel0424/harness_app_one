@@ -9,7 +9,7 @@ workflow:
     - git:
         ciCompleted:
           repos:
-            - "YOUR_ORG/harness"
+            - "yaoyel0424/harness_app_one"
 
   actions:
     - gitPr: {}
@@ -36,7 +36,7 @@ workflow:
 
   model: ""
   gitConfig:
-    repo: "YOUR_ORG/harness"
+    repo: "yaoyel0424/harness_app_one"
     branch: "main"
   agentOptions:
     skipInstall: false
