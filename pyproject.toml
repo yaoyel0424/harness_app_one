@@ -41,7 +41,7 @@ testcontainers = { extras = ["postgres"], version = "^4.8.0" }
 respx = "^0.23.0"
 pip-audit = "^2.7.0"
 cyclonedx-bom = "^5.1.0"
-aiosqlite = "^0.20.0"
+aiosqlite = "^0.22.1"
 asgi-lifespan = "^2.1.0"
 mkdocs = "^1.6.0"
 mkdocs-material = "^9.5.0"
