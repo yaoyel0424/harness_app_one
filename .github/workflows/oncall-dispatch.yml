@@ -1,0 +1,75 @@
+name: Oncall Dispatch
+
+# Alertmanager / Grafana → oncall-relay → repository_dispatch
+on:
+  repository_dispatch:
+    types:
+      - log-alert
+      - metric-alert
+      - scale-advisory
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 运行模式
+        required: true
+        type: choice
+        default: metric-alert
+        options:
+          - log-alert
+          - metric-alert
+          - scale-advisory
+
+concurrency:
+  group: oncall-${{ github.event.action || github.event.inputs.mode }}
+  cancel-in-progress: false
+
+jobs:
+  oncall:
+    name: AI 值班
+    runs-on: ubuntu-latest
+    if: vars.AUTO_FIX_ENABLED != 'false'
+    steps:
+      - name: 校验 Webhook 密钥
+        if: github.event_name == 'repository_dispatch'
+        env:
+          EXPECTED: ${{ secrets.ONCALL_WEBHOOK_SECRET }}
+          RECEIVED: ${{ github.event.client_payload.webhook_secret }}
+        run: |
+          if [ -n "$EXPECTED" ] && [ "$EXPECTED" != "$RECEIVED" ]; then
+            echo "Webhook 密钥不匹配"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 安装依赖
+        run: |
+          pip install poetry==1.8.5
+          poetry install --with dev --no-interaction
+
+      - name: 写入告警 payload
+        env:
+          PAYLOAD: ${{ toJson(github.event.client_payload) }}
+          MODE: ${{ github.event.action || github.event.inputs.mode }}
+        run: |
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            echo "$PAYLOAD" > alert-payload.json
+            echo "mode=$MODE" >> "$GITHUB_ENV"
+          else
+            echo '{"source":"manual","message":"workflow_dispatch"}' > alert-payload.json
+            echo "mode=${{ github.event.inputs.mode }}" >> "$GITHUB_ENV"
+          fi
+
+      - name: 运行 AI 值班
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AUTO_FIX_ENABLED: "true"
+        run: |
+          poetry run python scripts/ai_oncall.py \
+            --mode "$mode" \
+            --payload-file alert-payload.json

@@ -1,0 +1,43 @@
+# Cursor Automation 草稿：CI 失败自动修复
+# 触发：GitHub Checks 完成且失败（与 .github/workflows/ci-auto-fix.yml 等价）
+
+name: "CI 失败自动修复"
+description: "主仓库 CI 检查失败时，分析日志、修复代码并开 PR。"
+
+workflow:
+  triggers:
+    - git:
+        ciCompleted:
+          repos:
+            - "YOUR_ORG/harness"
+
+  actions:
+    - gitPr: {}
+
+  prompts:
+    - prompt: |
+        你是 myapp 项目的值班开发者。GitHub CI 检查刚刚失败。
+
+        ## 任务
+        1. 查看失败的 check / workflow 日志，定位根因
+        2. 阅读 AGENTS.md，遵守 import-linter 与测试约定
+        3. 修复 src/ 或 tests/ 中的问题
+        4. 本地验证：
+           - poetry run ruff check src tests
+           - poetry run mypy
+           - poetry run lint-imports
+           - poetry run pytest tests/unit tests/architecture -n auto --cov-fail-under=80
+        5. 开 PR，标题 [auto-fix] CI: <失败 job 名>
+        6. 标签：auto-fix
+
+        ## 禁止
+        - 不要提交 .env 或密钥
+        - 不要直接 merge 到 main
+
+  model: ""
+  gitConfig:
+    repo: "YOUR_ORG/harness"
+    branch: "main"
+  agentOptions:
+    skipInstall: false
+  memoryEnabled: false

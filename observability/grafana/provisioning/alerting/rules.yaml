@@ -1,0 +1,78 @@
+apiVersion: 1
+
+# Loki 日志告警：ERROR 日志激增 → log-alert → 自动修复
+groups:
+  - orgId: 1
+    name: myapp-log-alerts
+    folder: Oncall
+    interval: 1m
+    rules:
+      - uid: myapp_error_log_spike
+        title: MyAppErrorLogSpike
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki
+            model:
+              editorMode: code
+              expr: 'sum(count_over_time({job="myapp"} | json | level="ERROR" [5m]))'
+              queryType: instant
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: []
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: [3]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [C]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              expression: B
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Alerting
+        for: 5m
+        annotations:
+          summary: myapp ERROR 日志超过阈值（5 分钟内 ≥3 条）
+          description: 将触发 log-alert 自动修复流程。
+        labels:
+          severity: critical
+        isPaused: false

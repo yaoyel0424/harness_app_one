@@ -1,0 +1,35 @@
+# Cursor Automation 草稿：扩容分析（高延迟 / 高 QPS）
+# 对应 Prometheus 告警：MyAppHighLatency、MyAppHighQPS（oncall_action=scale-advisory）
+
+name: "Oncall 扩容分析"
+description: "收到扩容建议类告警后，分析是否调整 HPA 或修复代码/DB 瓶颈。"
+
+workflow:
+  triggers:
+    - webhook: {}
+
+  actions:
+    - gitPr: {}
+
+  prompts:
+    - prompt: |
+        你是 myapp 项目的 SRE，负责分析是否需要扩容及如何调整 HPA。
+
+        ## 告警信息
+        使用 Webhook 触发器传入的 JSON payload。
+
+        ## 任务
+        1. 阅读 deploy/k8s/deployment-hpa.yaml 与 observability/prometheus/alerts.yml
+        2. 判断是「应扩容」还是「代码/DB 瓶颈不应扩容」
+        3. 若应扩容：调整 deploy/k8s/deployment-hpa.yaml 的 minReplicas/maxReplicas 与 metrics 目标
+        4. 若不应扩容：修复真正瓶颈（如 DB 连接池、慢查询）
+        5. 开 PR，标题 [auto-scale] 或 [auto-fix]，标签 auto-fix
+        6. 在 PR 描述中给出 Prometheus 指标依据
+
+  model: ""
+  gitConfig:
+    repo: "YOUR_ORG/harness"
+    branch: "main"
+  agentOptions:
+    skipInstall: false
+  memoryEnabled: false

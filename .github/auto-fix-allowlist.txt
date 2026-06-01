@@ -1,0 +1,9 @@
+# auto-fix PR 允许自动合并的文件模式（fnmatch）
+src/**
+tests/**
+docs/**
+.env.example
+README.md
+AGENTS.md
+observability/**
+deploy/**

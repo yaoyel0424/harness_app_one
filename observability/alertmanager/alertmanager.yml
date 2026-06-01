@@ -1,0 +1,31 @@
+# Alertmanager：将告警转发至 oncall-relay → GitHub Actions
+global:
+  resolve_timeout: 5m
+
+route:
+  group_by: ["alertname", "service"]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  receiver: oncall-relay
+  routes:
+    - matchers:
+        - oncall_action = auto-fix
+      receiver: oncall-relay
+      continue: true
+    - matchers:
+        - oncall_action = scale-advisory
+      receiver: oncall-relay
+
+receivers:
+  - name: oncall-relay
+    webhook_configs:
+      - url: http://oncall-relay:8787/webhook
+        send_resolved: true
+
+inhibit_rules:
+  - source_matchers:
+      - alertname = MyAppDown
+    target_matchers:
+      - alertname = MyAppHighErrorRate
+    equal: ["service"]

@@ -1,0 +1,32 @@
+# Alertmanager 示例：告警直连 Cursor Automation Webhook
+# 用法：将 receivers 中 oncall-relay 的 url 改为 Cursor Automation 保存后给出的 Webhook URL
+# 可与 GitHub dispatch 路径二选一，或通过 oncall-relay 双路转发
+
+global:
+  resolve_timeout: 5m
+
+route:
+  group_by: ["alertname", "service"]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  receiver: cursor-automation
+
+receivers:
+  - name: cursor-automation
+    webhook_configs:
+      # 替换为 Cursor Automations 编辑器中显示的 Webhook URL
+      - url: https://api.cursor.com/automations/YOUR_AUTOMATION_ID/webhook
+        send_resolved: true
+        # 若 Cursor 要求 Bearer / 自定义 Header，在此配置 http_config
+        # http_config:
+        #   authorization:
+        #     type: Bearer
+        #     credentials: YOUR_CURSOR_WEBHOOK_SECRET
+
+inhibit_rules:
+  - source_matchers:
+      - alertname = MyAppDown
+    target_matchers:
+      - alertname = MyAppHighErrorRate
+    equal: ["service"]

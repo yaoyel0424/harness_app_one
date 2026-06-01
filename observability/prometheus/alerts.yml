@@ -1,0 +1,60 @@
+# Prometheus 告警规则：日志/指标异常与扩容建议
+groups:
+  - name: myapp-alerts
+    rules:
+      # 5xx 错误率超过 5% 持续 5 分钟 → 触发自动修复
+      - alert: MyAppHighErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"5.."}[5m]))
+            /
+            clamp_min(sum(rate(http_requests_total[5m])), 0.001)
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          oncall_action: auto-fix
+          alert_type: metric-alert
+        annotations:
+          summary: "myapp 5xx 错误率过高"
+          description: "5xx 占比超过 5%，持续 5 分钟，将触发自动修复流程。"
+
+      # P95 延迟超过 2s → 触发扩容分析
+      - alert: MyAppHighLatency
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+          ) > 2
+        for: 10m
+        labels:
+          severity: warning
+          oncall_action: scale-advisory
+          alert_type: scale-advisory
+        annotations:
+          summary: "myapp P95 延迟过高"
+          description: "P95 延迟超过 2s，建议检查 HPA 配置或数据库瓶颈。"
+
+      # 请求 QPS 持续偏高 → 扩容建议
+      - alert: MyAppHighQPS
+        expr: sum(rate(http_requests_total[5m])) > 100
+        for: 15m
+        labels:
+          severity: warning
+          oncall_action: scale-advisory
+          alert_type: scale-advisory
+        annotations:
+          summary: "myapp QPS 持续偏高"
+          description: "QPS 超过 100 持续 15 分钟，可考虑增加 HPA maxReplicas。"
+
+      # 应用不可达 → 紧急修复
+      - alert: MyAppDown
+        expr: up{job="myapp"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          oncall_action: auto-fix
+          alert_type: metric-alert
+        annotations:
+          summary: "myapp 指标端点不可达"
+          description: "Prometheus 无法抓取 /metrics，应用可能已崩溃。"

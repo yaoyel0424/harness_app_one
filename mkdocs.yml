@@ -1,0 +1,39 @@
+site_name: myapp 文档
+site_description: FastAPI 后端工程模板文档
+theme:
+  name: material
+  language: zh
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: 切换深色模式
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: 切换浅色模式
+
+nav:
+  - 首页: index.md
+  - 架构:
+      - 总览: architecture/overview.md
+      - ADR: adr/0001-record-architecture-decisions.md
+  - 规范:
+      - 编码规范: standards/coding.md
+      - 测试规范: standards/testing.md
+  - 运维:
+      - 自动运维: runbooks/auto-ops.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - toc:
+      permalink: true
+
+plugins:
+  - search

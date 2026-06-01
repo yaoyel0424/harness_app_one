@@ -1,0 +1,23 @@
+apiVersion: 1
+
+# Grafana 联系点：转发至 oncall-relay（Loki 日志告警）
+contactPoints:
+  - orgId: 1
+    name: oncall-relay
+    receivers:
+      - uid: oncall_relay_webhook
+        type: webhook
+        settings:
+          url: http://oncall-relay:8787/webhook
+          httpMethod: POST
+        disableResolveMessage: false
+
+policies:
+  - orgId: 1
+    receiver: oncall-relay
+    group_by:
+      - grafana_folder
+      - alertname
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 4h

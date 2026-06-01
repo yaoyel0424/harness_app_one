@@ -1,0 +1,89 @@
+name: Auto Merge
+
+# CI 全绿后自动合并带 auto-fix 标签的 PR（L2 策略）
+on:
+  pull_request:
+    types: [labeled, synchronize, opened]
+  check_suite:
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+
+jobs:
+  auto-merge:
+    name: 自动合并 auto-fix PR
+    if: vars.AUTO_MERGE_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 获取 PR 信息
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            PR_NUM="${{ github.event.pull_request.number }}"
+          else
+            PR_NUM=$(gh pr list --head "${{ github.event.check_suite.head_branch }}" --json number -q '.[0].number')
+          fi
+          if [ -z "$PR_NUM" ] || [ "$PR_NUM" = "null" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          LABELS=$(gh pr view "$PR_NUM" --json labels -q '[.labels[].name] | join(",")')
+          echo "pr=$PR_NUM" >> "$GITHUB_OUTPUT"
+          echo "labels=$LABELS" >> "$GITHUB_OUTPUT"
+          if echo "$LABELS" | grep -q "auto-fix"; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 等待 CI 通过
+        if: steps.pr.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr checks "${{ steps.pr.outputs.pr }}" --watch --interval 30 --fail-fast
+
+      - name: 检查变更文件 allowlist
+        if: steps.pr.outputs.skip != 'true'
+        id: allowlist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          FILES=$(gh pr diff "${{ steps.pr.outputs.pr }}" --name-only)
+          ALLOWED=$(cat .github/auto-fix-allowlist.txt)
+          BLOCKED=""
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            MATCHED=false
+            while IFS= read -r pattern; do
+              [ -z "$pattern" ] && continue
+              case "$f" in
+                $pattern) MATCHED=true; break ;;
+              esac
+            done <<< "$ALLOWED"
+            if [ "$MATCHED" = "false" ]; then
+              BLOCKED="$BLOCKED $f"
+            fi
+          done <<< "$FILES"
+          if [ -n "$BLOCKED" ]; then
+            echo "blocked=$BLOCKED" >> "$GITHUB_OUTPUT"
+            echo "允许自动合并的文件未通过 allowlist:$BLOCKED"
+            exit 1
+          fi
+
+      - name: 自动合并
+        if: steps.pr.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge "${{ steps.pr.outputs.pr }}" \
+            --squash \
+            --delete-branch \
+            --subject "chore: auto-fix merge (#${{ steps.pr.outputs.pr }})"

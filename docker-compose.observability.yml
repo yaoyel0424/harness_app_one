@@ -1,0 +1,98 @@
+# ---------------------------------------------------------------------------
+# Prometheus + Loki + Grafana + Tempo + Alertmanager + Oncall Relay
+# ---------------------------------------------------------------------------
+services:
+  prometheus:
+    image: prom/prometheus:v2.55.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+    networks:
+      - observability
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./observability/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    networks:
+      - observability
+
+  oncall-relay:
+    image: python:3.12-slim
+    ports:
+      - "8787:8787"
+    environment:
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      GITHUB_REPO: ${GITHUB_REPO:-}
+      ONCALL_WEBHOOK_SECRET: ${ONCALL_WEBHOOK_SECRET:-}
+      ONCALL_ENABLED: ${ONCALL_ENABLED:-true}
+      ONCALL_COOLDOWN_SEC: ${ONCALL_COOLDOWN_SEC:-3600}
+      CURSOR_AUTOMATION_WEBHOOK_URL: ${CURSOR_AUTOMATION_WEBHOOK_URL:-}
+      CURSOR_AUTOMATION_WEBHOOK_SECRET: ${CURSOR_AUTOMATION_WEBHOOK_SECRET:-}
+    volumes:
+      - ./scripts/oncall_relay.py:/app/oncall_relay.py:ro
+      - oncall-state:/tmp
+    command: ["python", "/app/oncall_relay.py"]
+    networks:
+      - observability
+
+  loki:
+    image: grafana/loki:3.2.0
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - observability
+
+  promtail:
+    image: grafana/promtail:3.2.0
+    volumes:
+      - ./observability/promtail/promtail.yml:/etc/promtail/config.yml:ro
+      - ./logs:/var/log/myapp:ro
+      - /var/log:/var/log:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+    networks:
+      - observability
+
+  tempo:
+    image: grafana/tempo:2.6.0
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./observability/tempo/tempo.yaml:/etc/tempo.yaml:ro
+    ports:
+      - "4317:4317"
+      - "3200:3200"
+    networks:
+      - observability
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_UNIFIED_ALERTING_ENABLED: "true"
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+      - alertmanager
+      - oncall-relay
+    networks:
+      - observability
+
+volumes:
+  oncall-state:
+
+networks:
+  observability:
+    driver: bridge

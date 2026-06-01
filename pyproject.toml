@@ -1,0 +1,169 @@
+[tool.poetry]
+name = "myapp"
+version = "0.1.0"
+description = "FastAPI 后端工程模板，涵盖完整开发、质量门禁与可观测性技术栈"
+authors = ["Team <team@example.com>"]
+readme = "README.md"
+packages = [{ include = "myapp", from = "src" }]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.115.0"
+uvicorn = { extras = ["standard"], version = "^0.32.0" }
+gunicorn = "^23.0.0"
+pydantic = "^2.10.0"
+pydantic-settings = "^2.6.0"
+sqlalchemy = { extras = ["asyncio"], version = "^2.0.36" }
+asyncpg = "^0.30.0"
+alembic = "^1.14.0"
+httpx = "^0.28.0"
+prometheus-fastapi-instrumentator = "^7.0.0"
+python-json-logger = "^3.2.0"
+opentelemetry-api = "^1.28.0"
+opentelemetry-sdk = "^1.28.0"
+opentelemetry-instrumentation-fastapi = "^0.49b0"
+opentelemetry-instrumentation-sqlalchemy = "^0.49b0"
+opentelemetry-exporter-otlp-proto-grpc = "^1.28.0"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.8.0"
+mypy = "^1.13.0"
+bandit = "^1.8.0"
+pre-commit = "^4.0.0"
+pytest = "^8.3.0"
+pytest-cov = "^6.0.0"
+pytest-asyncio = "^0.24.0"
+pytest-env = "^1.1.0"
+pytest-xdist = "^3.6.0"
+import-linter = "^2.1"
+pytest-archon = "^0.0.7"
+testcontainers = { extras = ["postgres"], version = "^4.8.0" }
+respx = "^0.23.0"
+pip-audit = "^2.7.0"
+cyclonedx-bom = "^5.1.0"
+aiosqlite = "^0.20.0"
+asgi-lifespan = "^2.1.0"
+mkdocs = "^1.6.0"
+mkdocs-material = "^9.5.0"
+cursor-sdk = "^0.1.0"
+
+[tool.poetry.scripts]
+myapp = "myapp.main:run"
+
+[build-system]
+requires = ["poetry-core>=1.9.0"]
+build-backend = "poetry.core.masonry.api"
+
+# ---------------------------------------------------------------------------
+# Ruff：Linter + Formatter（替代 Black / isort / flake8）
+# ---------------------------------------------------------------------------
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "F", "I", "B", "C4", "UP", "SIM", "RUF",
+]
+ignore = ["B008", "RUF002"]  # FastAPI Depends; 中文 docstring 允许全角标点
+
+[tool.ruff.lint.isort]
+known-first-party = ["myapp"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+# ---------------------------------------------------------------------------
+# mypy：静态类型检查
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+packages = ["myapp"]
+mypy_path = "src"
+
+[[tool.mypy.overrides]]
+module = "testcontainers.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "pytest_archon.*"
+ignore_missing_imports = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+warn_required_dynamic_aliases = true
+
+# ---------------------------------------------------------------------------
+# Bandit：安全扫描
+# ---------------------------------------------------------------------------
+[tool.bandit]
+exclude_dirs = ["tests", ".venv"]
+skips = ["B101"]  # 测试中允许 assert
+
+# ---------------------------------------------------------------------------
+# pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+env = [
+    "APP_ENV=test",
+    "DATABASE_URL=sqlite+aiosqlite:///:memory:",
+]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--cov=myapp",
+    "--cov-report=term-missing",
+    "--cov-report=xml",
+    "--cov-fail-under=80",
+]
+markers = [
+    "integration: 集成测试（需要 Docker）",
+    "architecture: 架构约束测试",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+# ---------------------------------------------------------------------------
+# import-linter：模块依赖分层约束
+# ---------------------------------------------------------------------------
+[tool.importlinter]
+root_packages = ["myapp"]
+
+[[tool.importlinter.contracts]]
+name = "API 层不得直接依赖 db 层"
+type = "forbidden"
+source_modules = ["myapp.api"]
+forbidden_modules = ["myapp.db"]
+allow_indirect_imports = true
+
+[[tool.importlinter.contracts]]
+name = "core 层不得依赖 api 层"
+type = "forbidden"
+source_modules = ["myapp.core"]
+forbidden_modules = ["myapp.api"]
+
+[[tool.importlinter.contracts]]
+name = "db 层不得依赖 api 或 core 层"
+type = "forbidden"
+source_modules = ["myapp.db"]
+forbidden_modules = ["myapp.api", "myapp.core"]
+
+[tool.coverage.run]
+source = ["src/myapp"]
+branch = true
+omit = ["*/main.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
