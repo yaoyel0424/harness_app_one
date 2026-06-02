@@ -1,7 +1,11 @@
 """API 层单元测试。"""
 
 import pytest
-from httpx import AsyncClient
+from asgi_lifespan import LifespanManager
+from httpx import ASGITransport, AsyncClient
+
+from myapp.config import Settings
+from myapp.main import create_app
 
 
 @pytest.mark.asyncio
@@ -18,6 +22,28 @@ async def test_readiness(client: AsyncClient) -> None:
     response = await client.get("/health/ready")
     assert response.status_code == 200
     assert response.json()["status"] == "ready"
+
+
+@pytest.mark.asyncio
+async def test_liveness_survives_unavailable_database() -> None:
+    """数据库不可达时应用应启动，存活探针成功且就绪探针失败。"""
+    settings = Settings(
+        app_env="development",
+        database_url="postgresql+asyncpg://myapp:myapp@127.0.0.1:1/myapp",
+        otel_enabled=False,
+    )
+    application = create_app(settings)
+
+    async with LifespanManager(application):
+        transport = ASGITransport(app=application)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            live_response = await client.get("/health/live")
+            ready_response = await client.get("/health/ready")
+
+    assert live_response.status_code == 200
+    assert live_response.json()["status"] == "alive"
+    assert ready_response.status_code == 503
+    assert ready_response.json()["status"] == "not_ready"
 
 
 @pytest.mark.asyncio
