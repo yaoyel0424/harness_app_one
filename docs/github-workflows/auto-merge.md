@@ -1,6 +1,6 @@
 # auto-merge.yml — auto-fix PR 自动合并
 
-> 对应文件：[`.github/workflows/auto-merge.yml`](../../.github/workflows/auto-merge.yml)
+> 对应文件：`.github/workflows/auto-merge.yml`
 
 ## 作用
 
@@ -66,7 +66,7 @@ gh pr checks "$PR_NUM" --watch --interval 30 --fail-fast
 
 ### 3. 检查变更文件 allowlist
 
-读取 [`.github/auto-fix-allowlist.txt`](../../.github/auto-fix-allowlist.txt)（fnmatch 模式），对 PR 中每个变更文件匹配：
+读取 `.github/auto-fix-allowlist.txt`（fnmatch 模式），对 PR 中每个变更文件匹配：
 
 ```
 src/**

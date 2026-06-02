@@ -1,6 +1,6 @@
 # oncall-dispatch.yml — 告警 AI 值班
 
-> 对应文件：[`.github/workflows/oncall-dispatch.yml`](../../.github/workflows/oncall-dispatch.yml)
+> 对应文件：`.github/workflows/oncall-dispatch.yml`
 
 ## 作用
 

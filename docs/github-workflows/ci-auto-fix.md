@@ -1,6 +1,6 @@
 # ci-auto-fix.yml — CI 失败自动修复
 
-> 对应文件：[`.github/workflows/ci-auto-fix.yml`](../../.github/workflows/ci-auto-fix.yml)
+> 对应文件：`.github/workflows/ci-auto-fix.yml`
 
 ## 作用
 
@@ -92,7 +92,7 @@ ci.yml 再次验证新 PR
 auto-merge.yml
 ```
 
-**并行方案：** [`.cursor/automations/ci-failure-auto-fix.yaml`](../../.cursor/automations/ci-failure-auto-fix.yaml) 使用 Cursor 平台 `ciCompleted` 触发，**不需要** `CURSOR_API_KEY`，由 Cursor 直接启动 Agent。
+**并行方案：** `.cursor/automations/ci-failure-auto-fix.yaml` 使用 Cursor 平台 `ciCompleted` 触发，**不需要** `CURSOR_API_KEY`，由 Cursor 直接启动 Agent。
 
 ## 手动测试
 

@@ -1,6 +1,6 @@
 # GitHub Actions 工作流说明
 
-本目录为 [`.github/workflows/`](../../.github/workflows/) 下每个 YAML 工作流的**独立注释文档**，说明触发条件、Job 职责、依赖的 Secrets/Variables 及与其他组件的关系。
+本目录为仓库根目录 `.github/workflows/` 下每个 YAML 工作流的**独立注释文档**，说明触发条件、Job 职责、依赖的 Secrets/Variables 及与其他组件的关系。
 
 ## 工作流一览
 
@@ -35,4 +35,4 @@ oncall-dispatch.yml（独立入口：告警 → relay → dispatch）
 ## 相关文档
 
 - [自动运维 Runbook](../runbooks/auto-ops.md)
-- [Cursor Automation 配置](../../.cursor/automations/README.md)
+- Cursor Automation 配置：仓库根目录 `.cursor/automations/README.md`

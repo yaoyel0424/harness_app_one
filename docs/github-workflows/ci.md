@@ -1,6 +1,6 @@
 # ci.yml — 主 CI 质量门禁
 
-> 对应文件：[`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)
+> 对应文件：`.github/workflows/ci.yml`
 
 ## 作用
 
