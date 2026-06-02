@@ -1,7 +1,10 @@
 """API 层单元测试。"""
 
 import pytest
-from httpx import AsyncClient
+from fastapi import FastAPI
+from httpx import ASGITransport, AsyncClient
+
+from myapp.composition.dependencies import check_database_ready
 
 
 @pytest.mark.asyncio
@@ -18,6 +21,26 @@ async def test_readiness(client: AsyncClient) -> None:
     response = await client.get("/health/ready")
     assert response.status_code == 200
     assert response.json()["status"] == "ready"
+
+
+@pytest.mark.asyncio
+async def test_readiness_when_database_unavailable(app: FastAPI) -> None:
+    """就绪探针在数据库不可用时应返回 not_ready。"""
+
+    async def database_not_ready() -> bool:
+        """模拟数据库健康探测失败。"""
+        return False
+
+    app.dependency_overrides[check_database_ready] = database_not_ready
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get("/health/ready")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 503
+    assert response.json()["status"] == "not_ready"
 
 
 @pytest.mark.asyncio

@@ -4,6 +4,7 @@ from collections.abc import AsyncGenerator
 from typing import Annotated
 
 from fastapi import Depends, Request
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from myapp.config import Settings, get_settings
@@ -26,6 +27,17 @@ async def get_db_session(
     """提供数据库会话依赖。"""
     async for session in get_session(session_factory):
         yield session
+
+
+async def check_database_ready(
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> bool:
+    """检查数据库是否可执行最小健康探测查询。"""
+    try:
+        await session.execute(text("SELECT 1"))
+    except Exception:
+        return False
+    return True
 
 
 def get_item_service(
