@@ -73,6 +73,19 @@ LOG_FILE=logs/myapp.jsonl
 
 规则文件：`observability/prometheus/alerts.yml`
 
+### DB / readiness 告警快速排查
+
+收到数据库或健康检查相关告警时，先区分运行上下文：
+
+| 场景 | `DATABASE_URL` 主机与端口 | 验证方式 |
+|------|---------------------------|----------|
+| 宿主机运行 `poetry run myapp` / `make run` | `127.0.0.1:5433` | `docker compose up -d postgres` 后访问 `/health/ready` |
+| `docker compose` 的 `app` 容器 | `postgres:5432` | `docker compose up -d` 后访问 `/health/ready` |
+| Kubernetes | Secret 中的集群内数据库地址 | 查看 readinessProbe 与应用日志 |
+
+不要把宿主机使用的 `127.0.0.1:5433` 原样注入 app 容器，否则容器会连接自身而不是
+PostgreSQL 服务，`/health/ready` 将持续返回 `503 not_ready`。
+
 ### Grafana Loki 日志告警（手动补充）
 
 1. 打开 Grafana → Alerting → New alert rule

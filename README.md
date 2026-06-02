@@ -102,6 +102,15 @@ docker compose up -d
 docker compose -f docker-compose.observability.yml --env-file .env up -d
 ```
 
+本地直接运行 `poetry run myapp` / `make run` 时，应用会通过宿主机映射端口
+`127.0.0.1:5433` 连接 PostgreSQL；在 `docker compose` 的 `app` 容器内则使用
+`postgres:5432`。因此请勿把 `.env.example` 中的宿主机 `DATABASE_URL` 原样注入 app
+容器。数据库就绪状态可通过以下命令验证：
+
+```bash
+curl -sf http://127.0.0.1:8000/health/ready
+```
+
 ## 自动运维（日志跟踪 / 自动修复 / 自动提交 / 扩容）
 
 告警 → `oncall-relay` → GitHub Actions → Cursor Cloud Agent 开 PR → CI → 可选自动 merge。

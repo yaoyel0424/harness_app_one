@@ -3,6 +3,16 @@
 import pytest
 from httpx import AsyncClient
 
+from myapp.composition.dependencies import get_health_service
+
+
+class UnreadyHealthService:
+    """用于模拟数据库不可用的健康检查服务。"""
+
+    async def is_database_ready(self) -> bool:
+        """模拟数据库就绪检查失败。"""
+        return False
+
 
 @pytest.mark.asyncio
 async def test_liveness(client: AsyncClient) -> None:
@@ -18,6 +28,19 @@ async def test_readiness(client: AsyncClient) -> None:
     response = await client.get("/health/ready")
     assert response.status_code == 200
     assert response.json()["status"] == "ready"
+
+
+@pytest.mark.asyncio
+async def test_readiness_db_unavailable(client: AsyncClient, app) -> None:
+    """就绪探针在数据库不可用时应返回 not_ready。"""
+    app.dependency_overrides[get_health_service] = UnreadyHealthService
+    try:
+        response = await client.get("/health/ready")
+    finally:
+        app.dependency_overrides.pop(get_health_service, None)
+
+    assert response.status_code == 503
+    assert response.json()["status"] == "not_ready"
 
 
 @pytest.mark.asyncio
