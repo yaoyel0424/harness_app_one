@@ -1,7 +1,17 @@
 """API 层单元测试。"""
 
 import pytest
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
+
+from myapp.composition.dependencies import get_health_service
+
+
+class UnreadyHealthService:
+    """测试用健康检查服务，模拟数据库不可用。"""
+
+    async def is_database_ready(self) -> bool:
+        """返回数据库不可用状态。"""
+        return False
 
 
 @pytest.mark.asyncio
@@ -18,6 +28,21 @@ async def test_readiness(client: AsyncClient) -> None:
     response = await client.get("/health/ready")
     assert response.status_code == 200
     assert response.json()["status"] == "ready"
+
+
+@pytest.mark.asyncio
+async def test_readiness_when_database_unavailable(app) -> None:
+    """就绪探针在数据库不可用时应返回 503。"""
+    app.dependency_overrides[get_health_service] = lambda: UnreadyHealthService()
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get("/health/ready")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 503
+    assert response.json()["status"] == "not_ready"
 
 
 @pytest.mark.asyncio
