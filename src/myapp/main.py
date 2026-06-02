@@ -29,7 +29,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     if settings.app_env != "production":
         try:
             await init_db(engine)
-        except SQLAlchemyError as exc:
+        except (SQLAlchemyError, OSError) as exc:
             logger.warning(
                 "数据库初始化失败, 应用保持启动并由就绪探针报告状态",
                 extra={"app_env": settings.app_env, "error": str(exc)},
