@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from myapp.config import Settings, get_settings
 from myapp.core.services.external_service import ExternalService
+from myapp.core.services.health_service import HealthService
 from myapp.core.services.item_service import ItemService
 from myapp.db.repositories.item_repository import ItemRepository
 from myapp.db.session import get_session
@@ -33,6 +34,13 @@ def get_item_service(
 ) -> ItemService:
     """提供 Item 业务服务。"""
     return ItemService(ItemRepository(session))
+
+
+def get_health_service(
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> HealthService:
+    """提供健康检查业务服务。"""
+    return HealthService(session)
 
 
 def get_http_client(settings: Annotated[Settings, Depends(get_settings)]) -> HttpClient:
