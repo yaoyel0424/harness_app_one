@@ -1,7 +1,10 @@
 """API 层单元测试。"""
 
 import pytest
+from fastapi import FastAPI
 from httpx import AsyncClient
+
+from myapp.composition.dependencies import get_database_readiness_probe
 
 
 @pytest.mark.asyncio
@@ -18,6 +21,27 @@ async def test_readiness(client: AsyncClient) -> None:
     response = await client.get("/health/ready")
     assert response.status_code == 200
     assert response.json()["status"] == "ready"
+
+
+@pytest.mark.asyncio
+async def test_readiness_returns_503_when_database_unavailable(
+    app: FastAPI,
+    client: AsyncClient,
+) -> None:
+    """就绪探针在数据库不可用时应返回 not_ready。"""
+
+    async def unavailable_probe() -> bool:
+        """模拟数据库探针失败。"""
+        return False
+
+    app.dependency_overrides[get_database_readiness_probe] = lambda: unavailable_probe
+    try:
+        response = await client.get("/health/ready")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 503
+    assert response.json()["status"] == "not_ready"
 
 
 @pytest.mark.asyncio

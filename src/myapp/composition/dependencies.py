@@ -1,9 +1,11 @@
 """组合根：FastAPI 依赖注入（允许跨层 wiring）。"""
 
-from collections.abc import AsyncGenerator
+import asyncio
+from collections.abc import AsyncGenerator, Awaitable, Callable
 from typing import Annotated
 
 from fastapi import Depends, Request
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from myapp.config import Settings, get_settings
@@ -12,6 +14,8 @@ from myapp.core.services.item_service import ItemService
 from myapp.db.repositories.item_repository import ItemRepository
 from myapp.db.session import get_session
 from myapp.utils.http_client import HttpClient
+
+ReadinessProbe = Callable[[], Awaitable[bool]]
 
 
 def get_session_factory(request: Request) -> async_sessionmaker[AsyncSession]:
@@ -26,6 +30,27 @@ async def get_db_session(
     """提供数据库会话依赖。"""
     async for session in get_session(session_factory):
         yield session
+
+
+async def check_database_ready(session: AsyncSession, timeout_seconds: float = 2.0) -> bool:
+    """检查数据库是否能在限定时间内响应。"""
+    try:
+        await asyncio.wait_for(session.execute(text("SELECT 1")), timeout=timeout_seconds)
+    except Exception:
+        return False
+    return True
+
+
+def get_database_readiness_probe(
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> ReadinessProbe:
+    """提供数据库就绪探针，避免 API 层直接执行数据库语句。"""
+
+    async def probe() -> bool:
+        """执行一次数据库连通性检查。"""
+        return await check_database_ready(session)
+
+    return probe
 
 
 def get_item_service(
