@@ -2,12 +2,22 @@
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import create_async_engine
 from testcontainers.postgres import PostgresContainer
 
 from myapp.config import Settings
-from myapp.db.session import create_session_factory, init_db
+from myapp.db.session import create_engine, create_session_factory, init_db
 from myapp.main import create_app
+
+
+def _to_asyncpg_url(raw_url: str) -> str:
+    """将 testcontainers 返回的 URL 转为 asyncpg 驱动。"""
+    if "+asyncpg" in raw_url:
+        return raw_url
+    if raw_url.startswith("postgresql+psycopg2://"):
+        return raw_url.replace("postgresql+psycopg2://", "postgresql+asyncpg://", 1)
+    if raw_url.startswith("postgresql://"):
+        return raw_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    return raw_url
 
 
 @pytest.mark.integration
@@ -15,11 +25,10 @@ from myapp.main import create_app
 async def test_postgres_integration_crud() -> None:
     """在真实 PostgreSQL 容器中验证 CRUD 流程。"""
     with PostgresContainer("postgres:16-alpine") as postgres:
-        raw_url = postgres.get_connection_url()
-        async_url = raw_url.replace("postgresql://", "postgresql+asyncpg://")
+        async_url = _to_asyncpg_url(postgres.get_connection_url())
 
         settings = Settings(app_env="test", database_url=async_url, otel_enabled=False)
-        engine = create_async_engine(async_url)
+        engine = create_engine(settings)
         await init_db(engine)
         session_factory = create_session_factory(engine)
 
