@@ -62,8 +62,8 @@ def run() -> None:
     uvicorn.run(
         "myapp.main:create_app",
         factory=True,
-        host="0.0.0.0",
-        port=8000,
+        host=settings.host,
+        port=settings.port,
         reload=settings.app_env == "development",
         log_level=settings.log_level.lower(),
     )

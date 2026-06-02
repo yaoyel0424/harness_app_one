@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     )
     debug: bool = Field(default=False, description="是否开启调试模式")
     log_level: str = Field(default="INFO", description="日志级别")
+    host: str = Field(default="127.0.0.1", description="开发服务器绑定地址")
+    port: int = Field(default=8000, description="开发服务器端口")
     database_url: str = Field(
         default="postgresql+asyncpg://myapp:myapp@127.0.0.1:5433/myapp",
         description="异步数据库连接 URL",
