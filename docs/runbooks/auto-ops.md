@@ -94,7 +94,7 @@ sum(count_over_time({job="myapp"} | json | level="ERROR" [5m])) >= 3
    - 修复代码、跑测试
    - 开 PR，标签 `auto-fix`
 4. 现有 `ci.yml` 自动验证 PR
-5. `ci-auto-fix.yml`：主分支 CI 失败时也会触发修复
+5. `ci-auto-fix.yml`：非 main 分支 CI 失败时触发修复（详见 [ci-auto-fix 说明](../github-workflows/ci-auto-fix.md)）
 
 ### 无 CURSOR_API_KEY 时
 

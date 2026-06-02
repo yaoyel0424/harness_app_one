@@ -83,7 +83,8 @@ make validate-worktree  # 完整 worktree 验证
 | Webhook 中继 | `scripts/oncall_relay.py` |
 | AI 值班 (SDK) | `scripts/ai_oncall.py` |
 | **Cursor Automation** | `.cursor/automations/*.yaml` |
-| GHA 工作流 | `.github/workflows/oncall-dispatch.yml` |
+| GHA 工作流 | `.github/workflows/`（说明见 `docs/github-workflows/`） |
+| GHA 告警分发 | `.github/workflows/oncall-dispatch.yml` |
 | 自动合并 | `.github/workflows/auto-merge.yml`（需 `AUTO_MERGE_ENABLED=true`） |
 | K8s HPA | `deploy/k8s/deployment-hpa.yaml` |
 

@@ -27,6 +27,12 @@ nav:
       - 测试规范: standards/testing.md
   - 运维:
       - 自动运维: runbooks/auto-ops.md
+      - GitHub Actions:
+          - 工作流总览: github-workflows/README.md
+          - ci.yml: github-workflows/ci.md
+          - ci-auto-fix.yml: github-workflows/ci-auto-fix.md
+          - oncall-dispatch.yml: github-workflows/oncall-dispatch.md
+          - auto-merge.yml: github-workflows/auto-merge.md
 
 markdown_extensions:
   - admonition
