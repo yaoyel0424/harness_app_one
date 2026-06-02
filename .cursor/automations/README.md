@@ -24,7 +24,7 @@
    - **Instructions**（指令，复制 YAML 中 `prompts` 段落）
    - **Repository & branch**（仓库与分支，替换 `YOUR_ORG/harness`）
 
-也可在 Agents 窗口中说：**「按 `.cursor/automations/oncall-auto-fix.yaml` 帮我创建 Cursor Automation」**，让 Agent 打开编辑器并预填。
+复制 Prompt：打开 `.cursor/automations/prompt-oncall-auto-fix.txt`，全选粘贴到 Automation 顶部文本框。
 
 ### 2. 保存后获取 Webhook URL
 
@@ -74,3 +74,14 @@ CURSOR_AUTOMATION_WEBHOOK_SECRET=your-secret
 ## Cloud Agent
 
 Cloud 计算在 [Cursor Dashboard → Cloud Agents](https://cursor.com/dashboard?tab=cloud-agents) 配置，确保仓库已授权 Cursor 访问 GitHub。
+
+## Cursor Automation 分支规则（重要）
+
+Cursor 为每次运行预分配分支，形如 `cursor/-bc-cc98b517-...-a261`。
+
+| 正确 | 错误 |
+|------|------|
+| 在当前 `cursor/-bc-...` 分支上改代码、commit、push | `git checkout -b fix/auto-xxx` 新建分支 |
+| `git push origin HEAD` 推到上述远程分支 | 在本地或其他分支改完不 push |
+
+若出现 **"This branch is not pushed to the remote. Expected remote branch: cursor/-bc-..."**，说明 Agent 新建了分支或未 push 到 Cursor 指定分支。请更新 Automation Prompt，禁止新建分支。

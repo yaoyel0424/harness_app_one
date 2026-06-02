@@ -21,10 +21,12 @@ workflow:
         ## 任务
         1. 阅读 deploy/k8s/deployment-hpa.yaml 与 observability/prometheus/alerts.yml
         2. 判断是「应扩容」还是「代码/DB 瓶颈不应扩容」
-        3. 若应扩容：调整 deploy/k8s/deployment-hpa.yaml 的 minReplicas/maxReplicas 与 metrics 目标
+        3. 环境准备：pip install poetry==1.8.5 && poetry install --with dev --no-interaction
+        4. 若应扩容：调整 deploy/k8s/deployment-hpa.yaml 的 minReplicas/maxReplicas 与 metrics 目标
         4. 若不应扩容：修复真正瓶颈（如 DB 连接池、慢查询）
-        5. 开 PR，标题 [auto-scale] 或 [auto-fix]，标签 auto-fix
-        6. 在 PR 描述中给出 Prometheus 指标依据
+        5. **Git 分支**：禁止新建分支；在 Cursor 分配的 `cursor/-bc-...` 分支上 commit 并 push，再开 PR
+        6. PR 标题 [auto-scale] 或 [auto-fix]，标签 auto-fix
+        7. 在 PR 描述中给出 Prometheus 指标依据
 
   model: ""
   gitConfig:

@@ -21,16 +21,18 @@ workflow:
         ## 任务
         1. 查看失败的 check / workflow 日志，定位根因
         2. 阅读 AGENTS.md，遵守 import-linter 与测试约定
-        3. 修复 src/ 或 tests/ 中的问题
-        4. 本地验证：
+        3. 环境准备：pip install poetry==1.8.5 && poetry install --with dev --no-interaction
+        4. 修复 src/ 或 tests/ 中的问题
+        5. 本地验证：
            - poetry run ruff check src tests
            - poetry run mypy
            - poetry run lint-imports
            - poetry run pytest tests/unit tests/architecture -n auto --cov-fail-under=80
-        5. 开 PR，标题 [auto-fix] CI: <失败 job 名>
-        6. 标签：auto-fix
+        6. **Git 分支**：禁止新建分支；在 Cursor 分配的 `cursor/-bc-...` 分支上 commit 并 push，再开 PR
+        7. PR 标题 [auto-fix] CI: <失败 job 名>，标签 auto-fix
 
         ## 禁止
+        - 不要新建 git 分支
         - 不要提交 .env 或密钥
         - 不要直接 merge 到 main
 
