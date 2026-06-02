@@ -188,3 +188,4 @@ CURSOR_AUTOMATION_WEBHOOK_URL=https://api.cursor.com/automations/xxx/webhook
 | **GHA + SDK** | `.github/workflows/oncall-dispatch.yml` | 偏好 GitHub 日志、已有 Actions Secrets |
 
 两条路径可**并存**（relay 双发）或**二选一**。Alertmanager 直连 Cursor 示例见 `observability/alertmanager/alertmanager-cursor.example.yml`。
+<!-- e2e-test -->
