@@ -7,6 +7,7 @@
 - [架构总览](architecture/overview.md)
 - [编码规范](standards/coding.md)
 - [测试规范](standards/testing.md)
+- [部署指南](runbooks/deploy.md)
 - [自动运维 Runbook](runbooks/auto-ops.md)
 - [ADR-0001：记录架构决策](adr/0001-record-architecture-decisions.md)
 

@@ -67,7 +67,7 @@ src = ["src", "tests"]
 select = [
     "E", "W", "F", "I", "B", "C4", "UP", "SIM", "RUF",
 ]
-ignore = ["B008", "RUF002"]  # FastAPI Depends; 中文 docstring 允许全角标点
+ignore = ["B008", "RUF001", "RUF002", "RUF003"]  # Depends; 中文日志/注释/文档允许全角标点
 
 [tool.ruff.lint.isort]
 known-first-party = ["myapp"]

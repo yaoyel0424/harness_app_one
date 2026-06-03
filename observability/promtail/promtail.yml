@@ -16,12 +16,5 @@ scrape_configs:
         labels:
           job: myapp
           service: myapp
-          __path__: /var/log/myapp/*.jsonl
-
-  - job_name: system
-    static_configs:
-      - targets:
-          - localhost
-        labels:
-          job: varlogs
-          __path__: /var/log/*log
+          ingest: promtail
+          __path__: /mnt/myapp-logs/*.jsonl

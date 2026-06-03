@@ -10,7 +10,10 @@ services:
       APP_ENV: development
       DATABASE_URL: postgresql+asyncpg://myapp:myapp@postgres:5432/myapp
       LOG_LEVEL: INFO
+      LOG_FILE: /var/log/myapp/myapp.jsonl
       OTEL_ENABLED: "false"
+    volumes:
+      - ./logs:/var/log/myapp
     depends_on:
       postgres:
         condition: service_healthy

@@ -73,17 +73,36 @@ LOG_FILE=logs/myapp.jsonl
 
 规则文件：`observability/prometheus/alerts.yml`
 
-### Grafana Loki 日志告警（手动补充）
+### Grafana Loki 日志告警（双规则）
 
-1. 打开 Grafana → Alerting → New alert rule
-2. 数据源选 Loki，查询示例：
+日志链路：`应用 JSONL → Promtail（ingest=promtail）→ Loki → Grafana 评估`
+
+| 规则 | 触发条件 | 动作 | Contact Point |
+|------|----------|------|---------------|
+| `MyAppErrorLogSpike` | 5 分钟内 ERROR **>3** 条，持续 5m | **auto-fix**（`log-alert`） | `oncall-relay` |
+| `MyAppPromtailLogNotify` | 5 分钟内 ERROR **≥1** 条，持续 2m | **仅通知**（邮件等） | `log-notify-only` |
+
+规则文件：`observability/grafana/provisioning/alerting/rules.yaml`
+
+LogQL（均带 `ingest="promtail"` 标签）：
 
 ```logql
-sum(count_over_time({job="myapp"} | json | level="ERROR" [5m])) >= 3
+sum(count_over_time({job="myapp", ingest="promtail"} | json | level="ERROR" [5m]))
 ```
 
-3. Contact point 选 **oncall-relay**（已 provisioning）
-4. 告警会以 `log-alert` 事件触发 GitHub Actions
+- Loki 激增规则：`oncall-relay` 仅处理 `MyAppErrorLogSpike`（`LOG_ALERT_AUTO_FIX_ENABLED=true` 默认开启）
+- Promtail 通知规则：**不会** dispatch GitHub；需在 Grafana 配置 SMTP 或将 `log-notify-only` 改为飞书 Webhook
+
+应用侧：`src/myapp/api/handlers/exception_handlers.py` 将 4xx 记为 WARNING、未捕获异常记为 ERROR。
+
+### Prometheus 指标告警（并行 auto-fix）
+
+| 告警 | 触发条件 | 动作 |
+|------|----------|------|
+| `MyAppHighErrorRate` | 5xx > 5% | auto-fix（`metric-alert`） |
+| `MyAppDown` | /metrics 不可达 | auto-fix |
+
+与 Loki `MyAppErrorLogSpike` 可能同时触发，relay 按 **alertname 分别冷却**。
 
 ## 三、自动修复与自动提交
 
@@ -140,6 +159,8 @@ AI 收到 `scale-advisory` 时会审查并 PR 调整 HPA 参数。
 | 机制 | 配置 |
 |------|------|
 | relay 冷却 | `ONCALL_COOLDOWN_SEC=3600`（同类告警 1h 一次） |
+| 日志链 auto-fix | `LOG_ALERT_AUTO_FIX_ENABLED=true`（仅 `MyAppErrorLogSpike`） |
+| Promtail 仅通知 | `MyAppPromtailLogNotify` → `log-notify-only`（邮件/SMTP） |
 | 总开关 | `ONCALL_ENABLED=false` 或 `AUTO_FIX_ENABLED=false` |
 | allowlist | `.github/auto-fix-allowlist.txt` |
 

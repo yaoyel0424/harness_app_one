@@ -32,6 +32,6 @@ async def app(test_settings: Settings):
 @pytest.fixture
 async def client(app) -> AsyncGenerator[AsyncClient, None]:
     """异步 HTTP 测试客户端。"""
-    transport = ASGITransport(app=app)
+    transport = ASGITransport(app=app, raise_app_exceptions=False)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac

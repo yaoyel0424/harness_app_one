@@ -13,7 +13,6 @@
 from __future__ import annotations
 
 import json
-import re
 import subprocess
 import sys
 import urllib.error
@@ -73,8 +72,10 @@ def main() -> int:
     token = env.get("GITHUB_TOKEN", "")
     repo = env.get("GITHUB_REPO", "")
 
-    if not token or "xxxx" in token or not (
-        token.startswith("ghp_") or token.startswith("github_pat_")
+    if (
+        not token
+        or "xxxx" in token
+        or not (token.startswith("ghp_") or token.startswith("github_pat_"))
     ):
         print("错误: 请在 .env 中配置有效的 GITHUB_TOKEN", file=sys.stderr)
         return 1

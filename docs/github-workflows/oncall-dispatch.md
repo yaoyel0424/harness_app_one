@@ -148,6 +148,8 @@ gh api repos/{owner}/{repo}/dispatches \
 
 ## 注意事项
 
+- **Loki `MyAppErrorLogSpike`** → `log-alert` auto-fix；**Promtail `MyAppPromtailLogNotify`** → 仅通知，不 dispatch。
+- **Prometheus `metric-alert`** 与 Loki 激增可能并行触发，relay 按 alertname 分别冷却。
 - relay 内置**冷却**（同 alertname 重复告警可能跳过）；本 Workflow 无二次冷却。
 - `scale-advisory` 与 `metric-alert` 在 Prometheus 规则中通过 `oncall_action` label 区分（见 `observability/prometheus/alerts.yml`）。
 - 详细 Runbook：[docs/runbooks/auto-ops.md](../runbooks/auto-ops.md)

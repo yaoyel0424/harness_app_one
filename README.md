@@ -100,7 +100,12 @@ docker compose up -d
 
 # 可观测性栈（Prometheus + Loki + Grafana + Tempo + Alertmanager）
 docker compose -f docker-compose.observability.yml --env-file .env up -d
+
+# 一键：应用 + 数据库 + 可观测性栈
+docker compose -f docker-compose.yml -f docker-compose.observability.yml --env-file .env up -d --build
 ```
+
+完整说明：[docs/runbooks/deploy.md](docs/runbooks/deploy.md)
 
 ## 自动运维（日志跟踪 / 自动修复 / 自动提交 / 扩容）
 
@@ -124,6 +129,7 @@ cp .env.example .env
 
 ## 文档
 
+- 部署指南：[docs/runbooks/deploy.md](docs/runbooks/deploy.md)
 - 在线文档：`poetry run mkdocs serve`
 - AI/新人导航：见 [AGENTS.md](AGENTS.md)
 

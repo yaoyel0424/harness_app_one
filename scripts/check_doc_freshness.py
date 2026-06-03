@@ -36,7 +36,7 @@ def get_changed_files() -> set[str]:
 
 def check_doc_freshness(root: Path | None = None) -> int:
     """若 src/ 有变更但文档未更新，则返回非零退出码。"""
-    project_root = root or Path(__file__).resolve().parents[1]
+    _ = root or Path(__file__).resolve().parents[1]
     changed = get_changed_files()
     src_changed = any(f.startswith("src/") for f in changed)
     doc_changed = any(f in changed or f.startswith("docs/") for f in changed)

@@ -88,7 +88,7 @@ make validate-worktree  # 完整 worktree 验证
 | 自动合并 | `.github/workflows/auto-merge.yml`（需 `AUTO_MERGE_ENABLED=true`） |
 | K8s HPA | `deploy/k8s/deployment-hpa.yaml` |
 
-Runbook：[docs/runbooks/auto-ops.md](docs/runbooks/auto-ops.md)
+Runbook：[docs/runbooks/deploy.md](docs/runbooks/deploy.md) · [docs/runbooks/auto-ops.md](docs/runbooks/auto-ops.md)
 
 ## 环境变量
 

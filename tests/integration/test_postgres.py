@@ -36,12 +36,12 @@ async def test_postgres_integration_crud() -> None:
         app.state.engine = engine
         app.state.session_factory = session_factory
 
-        transport = ASGITransport(app=app)
+        transport = ASGITransport(app=app, raise_app_exceptions=False)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post(
                 "/items", json={"name": "PG Item", "description": "from tc"}
             )
             assert response.status_code == 201
-            assert response.json()["name"] == "PG Item"
+            assert response.json()["data"]["name"] == "PG Item"
 
         await engine.dispose()

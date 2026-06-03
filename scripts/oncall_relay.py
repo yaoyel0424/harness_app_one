@@ -8,6 +8,7 @@ Grafana / Alertmanager Webhook 中继：转发至 GitHub repository_dispatch。
   ONCALL_WEBHOOK_SECRET - 与 GitHub Secrets 一致的校验密钥
   ONCALL_ENABLED    - true/false，熔断开关
   ONCALL_COOLDOWN_SEC - 同类告警冷却时间（默认 3600）
+  LOG_ALERT_AUTO_FIX_ENABLED - true 时 Loki 规则 MyAppErrorLogSpike 才 dispatch（默认 true）
 """
 
 from __future__ import annotations
@@ -27,6 +28,9 @@ logger = logging.getLogger("oncall-relay")
 
 COOLDOWN_FILE = Path(os.getenv("ONCALL_STATE_FILE", "/tmp/oncall_cooldown.json"))
 DEFAULT_COOLDOWN = int(os.getenv("ONCALL_COOLDOWN_SEC", "3600"))
+LOG_ALERT_AUTO_FIX_ENABLED = os.getenv("LOG_ALERT_AUTO_FIX_ENABLED", "true").lower() == "true"
+# 仅 Loki 激增规则走 auto-fix；Promtail 通知规则不应指向 relay
+AUTO_FIX_LOG_ALERT_NAMES = frozenset({"MyAppErrorLogSpike"})
 
 
 def load_cooldown() -> dict[str, float]:
@@ -168,9 +172,28 @@ class WebhookHandler(BaseHTTPRequestHandler):
         else:
             event_type, payload = parse_grafana_payload(body)
 
-        alert_key = (
-            payload.get("commonLabels", {}).get("alertname")
-            or payload.get("title", event_type)
+        if event_type == "log-alert":
+            alert_name = str(payload.get("title", ""))
+            if alert_name not in AUTO_FIX_LOG_ALERT_NAMES:
+                logger.info(
+                    "log-alert %s 为 Promtail 仅通知规则，忽略 auto-fix dispatch",
+                    alert_name or "(unknown)",
+                )
+                self._json_response(
+                    200,
+                    {"status": "ignored", "reason": "notify-only log alert"},
+                )
+                return
+            if not LOG_ALERT_AUTO_FIX_ENABLED:
+                logger.info("log-alert 已禁用（LOG_ALERT_AUTO_FIX_ENABLED=false），忽略 dispatch")
+                self._json_response(
+                    200,
+                    {"status": "ignored", "reason": "log-alert auto-fix disabled"},
+                )
+                return
+
+        alert_key = payload.get("commonLabels", {}).get("alertname") or payload.get(
+            "title", event_type
         )
         if is_cooled_down(str(alert_key), DEFAULT_COOLDOWN):
             logger.info("告警 %s 在冷却期内，跳过", alert_key)

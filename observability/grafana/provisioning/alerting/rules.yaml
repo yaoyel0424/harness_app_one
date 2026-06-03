@@ -1,6 +1,8 @@
 apiVersion: 1
 
-# Loki 日志告警：ERROR 日志激增 → log-alert → 自动修复
+# Grafana Loki 告警（日志经 Promtail → Loki）
+# - MyAppErrorLogSpike：Loki 评估 → oncall-relay → log-alert 自动修复
+# - MyAppPromtailLogNotify：Promtail 采集流 → 仅通知（邮件等），不 auto-fix
 groups:
   - orgId: 1
     name: myapp-log-alerts
@@ -18,7 +20,7 @@ groups:
             datasourceUid: loki
             model:
               editorMode: code
-              expr: 'sum(count_over_time({job="myapp"} | json | level="ERROR" [5m]))'
+              expr: 'sum(count_over_time({job="myapp", ingest="promtail"} | json | level="ERROR" [5m]))'
               queryType: instant
               refId: A
           - refId: B
@@ -71,8 +73,82 @@ groups:
         execErrState: Alerting
         for: 5m
         annotations:
-          summary: myapp ERROR 日志超过阈值（5 分钟内 ≥3 条）
-          description: 将触发 log-alert 自动修复流程。
+          summary: myapp ERROR 日志激增（5 分钟内 >3 条）
+          description: Loki 告警 → oncall-relay → log-alert 自动修复。
         labels:
           severity: critical
+          oncall_action: auto-fix
+          alert_channel: loki
+        isPaused: false
+
+      - uid: myapp_promtail_log_notify
+        title: MyAppPromtailLogNotify
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki
+            model:
+              editorMode: code
+              expr: 'sum(count_over_time({job="myapp", ingest="promtail"} | json | level="ERROR" [5m]))'
+              queryType: instant
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: []
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [C]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              expression: B
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Alerting
+        for: 2m
+        annotations:
+          summary: Promtail 采集到 ERROR 日志（5 分钟内 ≥1 条）
+          description: 仅通知运维（邮件/飞书等），不触发 auto-fix。
+        labels:
+          severity: warning
+          notify_only: "true"
+          alert_channel: promtail
         isPaused: false

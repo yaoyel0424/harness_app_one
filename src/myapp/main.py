@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from myapp.api import health_router, items_router
+from myapp.api.handlers import register_exception_handlers, register_response_middleware
 from myapp.config import Settings, get_settings
 from myapp.db.session import create_engine, create_session_factory, init_db
 from myapp.utils.logging import get_logger, setup_logging
@@ -49,9 +50,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.include_router(health_router)
     app.include_router(items_router)
+    register_exception_handlers(app)
 
     # Prometheus /metrics 端点
     Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
+    register_response_middleware(app)
 
     return app
 

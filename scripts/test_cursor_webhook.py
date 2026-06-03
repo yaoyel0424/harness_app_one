@@ -54,7 +54,8 @@ def build_payload(*, e2e: bool) -> dict:
                             "这是人工触发的端到端测试。"
                             "请在 docs/runbooks/auto-ops.md 末尾追加一行 "
                             "'<!-- e2e-test -->'，运行 ruff/mypy/pytest 后开 PR。"
-                            "禁止新建分支，必须在 Cursor 分配的 cursor/-bc-... 分支上 commit 并 push。"
+                            "禁止新建分支，必须在 Cursor 分配的 cursor/-bc-... "
+                            "分支上 commit 并 push。"
                             "标题 [auto-fix] e2e webhook test，标签 auto-fix。不要提交 .env。"
                         ),
                     },

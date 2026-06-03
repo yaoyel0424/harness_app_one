@@ -31,6 +31,7 @@ services:
       ONCALL_WEBHOOK_SECRET: ${ONCALL_WEBHOOK_SECRET:-}
       ONCALL_ENABLED: ${ONCALL_ENABLED:-true}
       ONCALL_COOLDOWN_SEC: ${ONCALL_COOLDOWN_SEC:-3600}
+      LOG_ALERT_AUTO_FIX_ENABLED: ${LOG_ALERT_AUTO_FIX_ENABLED:-true}
       CURSOR_AUTOMATION_WEBHOOK_URL: ${CURSOR_AUTOMATION_WEBHOOK_URL:-}
       CURSOR_AUTOMATION_WEBHOOK_SECRET: ${CURSOR_AUTOMATION_WEBHOOK_SECRET:-}
     volumes:
@@ -52,8 +53,8 @@ services:
     image: grafana/promtail:3.2.0
     volumes:
       - ./observability/promtail/promtail.yml:/etc/promtail/config.yml:ro
-      - ./logs:/var/log/myapp:ro
-      - /var/log:/var/log:ro
+      # 与 app 共享宿主机 ./logs；勿挂载 /var/log 整树（会与子路径冲突且 Windows 只读）
+      - ./logs:/mnt/myapp-logs:ro
     command: -config.file=/etc/promtail/config.yml
     depends_on:
       - loki
@@ -79,6 +80,13 @@ services:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
       GF_UNIFIED_ALERTING_ENABLED: "true"
+      # 邮件通知（Promtail 仅通知规则 log-notify-only）；按需取消注释并填写
+      # GF_SMTP_ENABLED: "true"
+      # GF_SMTP_HOST: smtp.example.com:587
+      # GF_SMTP_USER: ${GRAFANA_SMTP_USER:-}
+      # GF_SMTP_PASSWORD: ${GRAFANA_SMTP_PASSWORD:-}
+      # GF_SMTP_FROM_ADDRESS: ${GRAFANA_SMTP_FROM:-alerts@example.com}
+      # GF_SMTP_FROM_NAME: myapp-alerts
     volumes:
       - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
     depends_on:

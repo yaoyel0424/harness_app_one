@@ -1,6 +1,8 @@
 apiVersion: 1
 
-# Grafana 联系点：转发至 oncall-relay（Loki 日志告警）
+# Contact Point 路由：
+# - MyAppErrorLogSpike（Loki）→ oncall-relay → log-alert 自动修复
+# - MyAppPromtailLogNotify（Promtail 采集流）→ log-notify-only → 邮件/飞书（需配置 SMTP 或改 Webhook）
 contactPoints:
   - orgId: 1
     name: oncall-relay
@@ -12,12 +14,28 @@ contactPoints:
           httpMethod: POST
         disableResolveMessage: false
 
+  - orgId: 1
+    name: log-notify-only
+    receivers:
+      - uid: log_notify_email
+        type: email
+        settings:
+          addresses: ops@example.com
+          singleEmail: false
+        disableResolveMessage: false
+
 policies:
   - orgId: 1
-    receiver: oncall-relay
+    receiver: log-notify-only
     group_by:
-      - grafana_folder
       - alertname
     group_wait: 30s
     group_interval: 5m
     repeat_interval: 4h
+    routes:
+      - receiver: oncall-relay
+        matchers:
+          - alertname = MyAppErrorLogSpike
+      - receiver: log-notify-only
+        matchers:
+          - alertname = MyAppPromtailLogNotify
