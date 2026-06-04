@@ -1,10 +1,13 @@
 """API 层单元测试。"""
 
+from collections.abc import AsyncGenerator
 from typing import Any
 
 import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
+
+from myapp.composition.dependencies import get_db_session
 
 
 def _data(response_json: dict[str, Any]) -> Any:
@@ -31,6 +34,35 @@ async def test_readiness(client: AsyncClient) -> None:
     response = await client.get("/health/ready")
     assert response.status_code == 200
     assert _data(response.json())["status"] == "ready"
+
+
+@pytest.mark.asyncio
+async def test_readiness_returns_503_when_database_unavailable(
+    app: FastAPI,
+    client: AsyncClient,
+) -> None:
+    """就绪探针在数据库不可用时应返回 not_ready。"""
+
+    class FailingSession:
+        """模拟执行数据库探测失败的会话。"""
+
+        async def execute(self, statement: object) -> None:
+            """执行健康检查 SQL 时抛出连接异常。"""
+            _ = statement
+            raise ConnectionError("数据库不可用")
+
+    async def failing_db_session() -> AsyncGenerator[FailingSession, None]:
+        """提供固定失败的数据库会话依赖。"""
+        yield FailingSession()
+
+    app.dependency_overrides[get_db_session] = failing_db_session
+    try:
+        response = await client.get("/health/ready")
+    finally:
+        app.dependency_overrides.pop(get_db_session, None)
+
+    assert response.status_code == 503
+    assert _data(response.json())["status"] == "not_ready"
 
 
 @pytest.mark.asyncio
