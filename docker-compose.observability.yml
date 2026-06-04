@@ -6,6 +6,9 @@ services:
     image: prom/prometheus:v2.55.0
     ports:
       - "9090:9090"
+    extra_hosts:
+      # Linux Docker 需要显式把 host.docker.internal 映射到宿主机网关。
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./observability/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro

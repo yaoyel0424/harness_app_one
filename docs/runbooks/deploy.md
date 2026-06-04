@@ -155,7 +155,7 @@ docker compose -f docker-compose.yml -f docker-compose.observability.yml down
 
 **指标采集**
 
-`observability/prometheus/prometheus.yml` 中 myapp 的抓取目标为 `host.docker.internal:8000`（经宿主机端口访问 app 容器的 `/metrics`）。Docker Desktop（Windows/macOS）通常可用；Linux 若抓不到，需调整 target 或打通网络。
+`observability/prometheus/prometheus.yml` 中 myapp 的抓取目标为 `host.docker.internal:8000`（经宿主机端口访问 app 容器的 `/metrics`）。`docker-compose.observability.yml` 已在 Prometheus 容器上配置 `host.docker.internal:host-gateway`，确保 Linux Docker 也能解析该宿主机别名；若仍抓不到，请先确认应用容器 8000 端口已发布且 `/metrics` 返回 200。
 
 **应用日志 → Loki**
 

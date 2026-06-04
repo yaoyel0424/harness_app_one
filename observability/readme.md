@@ -97,7 +97,7 @@ scrape_configs:
           service: myapp
 ```
 
-- **scrape**：从宿主机 8000 抓应用指标（Docker Desktop 用 `host.docker.internal`）
+- **scrape**：从宿主机 8000 抓应用指标；`docker-compose.observability.yml` 为 Prometheus 配置了 `host.docker.internal:host-gateway`，兼容 Linux Docker。
 - **rule_files**：加载同目录 `alerts.yml`
 - **alerting**：把告警发给 Alertmanager 容器
 
@@ -321,6 +321,7 @@ Alertmanager **不会**访问 Prometheus 的 `/metrics`，也 **不会**跑 Prom
 ① 采集（Pull）
    prometheus.yml scrape_configs
    每 15s GET http://host.docker.internal:8000/metrics
+   （Prometheus 容器通过 host-gateway 映射解析 host.docker.internal）
         ↓
    写入 Prometheus 本地 TSDB
 
