@@ -48,7 +48,10 @@ jobs:
     name: Security Scan
     runs-on: ubuntu-latest
     steps:
+      # gitleaks PR 扫描需完整 git 历史，否则 commit^ 不存在会失败
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}

@@ -45,7 +45,10 @@ services:
     image: grafana/loki:3.2.0
     ports:
       - "3100:3100"
-    command: -config.file=/etc/loki/local-config.yaml
+    command: -config.file=/etc/loki/loki.yaml
+    volumes:
+      - ./observability/loki/loki.yaml:/etc/loki/loki.yaml:ro
+      - loki-data:/loki
     networks:
       - observability
 
@@ -55,6 +58,7 @@ services:
       - ./observability/promtail/promtail.yml:/etc/promtail/config.yml:ro
       # 与 app 共享宿主机 ./logs；勿挂载 /var/log 整树（会与子路径冲突且 Windows 只读）
       - ./logs:/mnt/myapp-logs:ro
+      - promtail-data:/tmp
     command: -config.file=/etc/promtail/config.yml
     depends_on:
       - loki
@@ -100,6 +104,8 @@ services:
 
 volumes:
   oncall-state:
+  loki-data:
+  promtail-data:
 
 networks:
   observability:

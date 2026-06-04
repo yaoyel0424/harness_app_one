@@ -1,17 +1,15 @@
 """统一 API 响应包络模型与构造工具。"""
 
-from typing import Any, Generic, TypeVar
+from typing import Any
 
 from pydantic import BaseModel, Field
 from starlette.responses import JSONResponse
-
-T = TypeVar("T")
 
 # 包络字段名，供中间件与异常处理共用
 ENVELOPE_KEYS = frozenset({"code", "message", "data"})
 
 
-class ApiEnvelope(BaseModel, Generic[T]):
+class ApiEnvelope[T](BaseModel):
     """统一 API 响应结构。"""
 
     code: int = Field(..., description="业务/HTTP 状态码")
