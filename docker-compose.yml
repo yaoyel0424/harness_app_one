@@ -38,6 +38,15 @@ services:
     networks:
       - app-net
 
+  docs:
+    build:
+      context: .
+      dockerfile: Dockerfile.docs
+    ports:
+      - "8001:8001"
+    networks:
+      - app-net
+
 volumes:
   postgres_data:
 

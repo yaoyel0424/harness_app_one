@@ -15,6 +15,18 @@
 
 ```bash
 poetry run mkdocs serve
+# 或
+make docs-serve
 ```
 
-访问 http://127.0.0.1:8000 查看文档站点。
+访问 http://127.0.0.1:8001 查看文档站点。
+
+## Docker 部署
+
+```bash
+make docs-up
+# 或
+docker compose up -d docs --build
+```
+
+访问 http://127.0.0.1:8001（与 myapp API 端口 8000 互不冲突）。

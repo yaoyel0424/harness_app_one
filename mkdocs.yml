@@ -1,5 +1,7 @@
 site_name: myapp 文档
 site_description: FastAPI 后端工程模板文档
+# 本地 mkdocs serve 端口（与 myapp 默认 8000 错开）
+dev_addr: 127.0.0.1:8001
 theme:
   name: material
   language: zh
@@ -34,6 +36,9 @@ nav:
           - ci-auto-fix.yml: github-workflows/ci-auto-fix.md
           - oncall-dispatch.yml: github-workflows/oncall-dispatch.md
           - auto-merge.yml: github-workflows/auto-merge.md
+  - 模板:
+      - ADR 模板: templates/adr-template.md
+      - K8s 升级方案: templates/k8s-upgrade-template.md
 
 markdown_extensions:
   - admonition

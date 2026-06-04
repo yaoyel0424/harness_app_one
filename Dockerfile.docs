@@ -1,0 +1,27 @@
+# ---------------------------------------------------------------------------
+# MkDocs 文档站：构建静态站点并用 Nginx 提供访问
+# ---------------------------------------------------------------------------
+FROM python:3.12-slim AS builder
+
+WORKDIR /app
+
+# 仅安装文档构建依赖，避免拉取完整 dev 工具链
+RUN pip install --no-cache-dir "mkdocs>=1.6.0,<2" "mkdocs-material>=9.5.0,<10"
+
+COPY mkdocs.yml ./
+COPY docs ./docs
+
+RUN mkdocs build --strict
+
+# ---------------------------------------------------------------------------
+# 运行阶段：Nginx 托管静态文件
+# ---------------------------------------------------------------------------
+FROM nginx:1.27-alpine AS runtime
+
+COPY deploy/nginx/docs.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/site /usr/share/nginx/html
+
+EXPOSE 8001
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:8001/ || exit 1

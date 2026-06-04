@@ -2,7 +2,7 @@
 # Makefile：统一团队操作入口
 # ---------------------------------------------------------------------------
 
-.PHONY: help install check lint format typecheck security arch test cov integration docker-build docs sbom pre-commit
+.PHONY: help install check lint format typecheck security arch test cov integration docker-build docs docs-serve docs-up sbom pre-commit
 
 help: ## 显示帮助
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -48,6 +48,12 @@ docker-build: ## 构建 Docker 镜像
 
 docs: ## 构建 MkDocs 文档
 	poetry run mkdocs build --strict
+
+docs-serve: ## 本地预览 MkDocs（http://127.0.0.1:8001）
+	poetry run mkdocs serve
+
+docs-up: ## Docker 启动文档站（http://127.0.0.1:8001）
+	docker compose up -d docs --build
 
 sbom: ## 生成 CycloneDX SBOM
 	poetry run cyclonedx-py poetry -o sbom.json

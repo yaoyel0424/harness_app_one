@@ -130,7 +130,8 @@ cp .env.example .env
 ## 文档
 
 - 部署指南：[docs/runbooks/deploy.md](docs/runbooks/deploy.md)
-- 在线文档：`poetry run mkdocs serve`
+- 本地预览：`make docs-serve` → http://127.0.0.1:8001
+- Docker 文档站：`make docs-up` → http://127.0.0.1:8001
 - AI/新人导航：见 [AGENTS.md](AGENTS.md)
 
 ## 许可证
