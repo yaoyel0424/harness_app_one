@@ -7,10 +7,15 @@ on:
   check_suite:
     types: [completed]
 
+concurrency:
+  group: auto-merge-${{ github.event.pull_request.number || github.event.check_suite.head_branch }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
   pull-requests: write
   checks: read
+  actions: read
 
 jobs:
   auto-merge:
@@ -48,7 +53,16 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh pr checks "${{ steps.pr.outputs.pr }}" --watch --interval 30 --fail-fast
+          PR_NUM="${{ steps.pr.outputs.pr }}"
+          BRANCH=$(gh pr view "$PR_NUM" --json headRefName -q .headRefName)
+          RUN_ID=$(gh run list --workflow=ci.yml --branch="$BRANCH" --limit 1 --json databaseId -q '.[0].databaseId')
+          if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
+            echo "错误: 分支 $BRANCH 上未找到 CI workflow run" >&2
+            exit 1
+          fi
+          echo "等待 CI workflow run $RUN_ID（分支 $BRANCH）..."
+          # 只等待 ci.yml，避免 gh pr checks --watch 把本 job 也算进去导致自等死锁
+          gh run watch "$RUN_ID" --exit-status
 
       - name: 检查变更文件 allowlist
         if: steps.pr.outputs.skip != 'true'
