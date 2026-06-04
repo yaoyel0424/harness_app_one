@@ -6,6 +6,8 @@ import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
 
+from myapp.composition.dependencies import get_health_service
+
 
 def _data(response_json: dict[str, Any]) -> Any:
     """从统一包络中取出 data 字段。"""
@@ -31,6 +33,33 @@ async def test_readiness(client: AsyncClient) -> None:
     response = await client.get("/health/ready")
     assert response.status_code == 200
     assert _data(response.json())["status"] == "ready"
+
+
+class _UnreadyHealthService:
+    """模拟数据库不可用的健康检查服务。"""
+
+    async def is_database_ready(self) -> bool:
+        """返回数据库未就绪状态。"""
+        return False
+
+
+@pytest.mark.asyncio
+async def test_readiness_returns_503_when_database_unavailable(
+    app: FastAPI,
+    client: AsyncClient,
+) -> None:
+    """就绪探针在数据库不可用时应返回 not_ready 和 503。"""
+    app.dependency_overrides[get_health_service] = _UnreadyHealthService
+    try:
+        response = await client.get("/health/ready")
+    finally:
+        app.dependency_overrides.pop(get_health_service, None)
+
+    body = response.json()
+    assert response.status_code == 503
+    assert body["code"] == 503
+    assert body["message"] == "error"
+    assert _data(body)["status"] == "not_ready"
 
 
 @pytest.mark.asyncio

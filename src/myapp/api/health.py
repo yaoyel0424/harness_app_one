@@ -3,11 +3,10 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Response, status
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from myapp.composition.dependencies import get_db_session
+from myapp.composition.dependencies import get_health_service
 from myapp.config import Settings, get_settings
+from myapp.core.services.health_service import HealthService
 from myapp.schemas.item import HealthResponse
 
 router = APIRouter(tags=["health"])
@@ -23,12 +22,10 @@ async def liveness(settings: Annotated[Settings, Depends(get_settings)]) -> Heal
 async def readiness(
     response: Response,
     settings: Annotated[Settings, Depends(get_settings)],
-    session: Annotated[AsyncSession, Depends(get_db_session)],
+    health_service: Annotated[HealthService, Depends(get_health_service)],
 ) -> HealthResponse:
     """就绪探针：检查数据库连通性。"""
-    try:
-        await session.execute(text("SELECT 1"))
-    except Exception:
+    if not await health_service.is_database_ready():
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
         return HealthResponse(status="not_ready", service=settings.app_name)
     return HealthResponse(status="ready", service=settings.app_name)
