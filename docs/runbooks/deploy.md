@@ -155,7 +155,18 @@ docker compose -f docker-compose.yml -f docker-compose.observability.yml down
 
 **指标采集**
 
-`observability/prometheus/prometheus.yml` 中 myapp 的抓取目标为 `host.docker.internal:8000`（经宿主机端口访问 app 容器的 `/metrics`）。Docker Desktop（Windows/macOS）通常可用；Linux 若抓不到，需调整 target 或打通网络。
+`observability/prometheus/prometheus.yml` 中 myapp 的抓取目标为 `host.docker.internal:8000`（经宿主机端口访问 app 容器的 `/metrics`）。Docker Desktop（Windows/macOS）通常可用；Linux Docker 需在 Prometheus 容器内把该别名映射到宿主机网关，`docker-compose.observability.yml` 已通过 `extra_hosts: ["host.docker.internal:host-gateway"]` 固化该映射。
+
+Linux 下可用以下命令从 Prometheus 容器内验证：
+
+```bash
+docker compose -f docker-compose.observability.yml exec prometheus \
+  wget -qO- http://host.docker.internal:8000/metrics
+```
+
+- 返回 Prometheus 文本指标：抓取链路正常。
+- `bad address` / `no such host`：宿主机别名未解析，检查 `extra_hosts` 是否生效。
+- `connection refused`：别名已解析，但宿主机 `8000` 没有应用监听，检查 app 容器、端口映射和 `/health/live`。
 
 **应用日志 → Loki**
 

@@ -11,6 +11,9 @@ services:
       - ./observability/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
     networks:
       - observability
+    extra_hosts:
+      # Linux Docker 默认不一定提供该别名，需映射到宿主机网关供 /metrics 抓取。
+      - "host.docker.internal:host-gateway"
 
   alertmanager:
     image: prom/alertmanager:v0.27.0
