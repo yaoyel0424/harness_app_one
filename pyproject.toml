@@ -10,7 +10,7 @@ packages = [{ include = "myapp", from = "src" }]
 python = "^3.12"
 fastapi = "^0.135.0"
 starlette = ">=1.0.1"
-uvicorn = { extras = ["standard"], version = "^0.32.0" }
+uvicorn = { extras = ["standard"], version = "^0.49.0" }
 gunicorn = "^23.0.0"
 pydantic = "^2.10.0"
 pydantic-settings = "^2.6.0"
