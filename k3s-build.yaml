@@ -1,0 +1,1402 @@
+﻿apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    app.kubernetes.io/part-of: harness
+  name: myapp
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    app.kubernetes.io/part-of: harness
+  name: observability
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: promtail
+  namespace: observability
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: promtail-read
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  - nodes/proxy
+  - services
+  - endpoints
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: promtail-read
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: promtail-read
+subjects:
+- kind: ServiceAccount
+  name: promtail
+  namespace: observability
+---
+apiVersion: v1
+data:
+  alertmanager.yml: "global:\r\n  resolve_timeout: 5m\r\n\r\nroute:\r\n  group_by:
+    [\"alertname\", \"service\"]\r\n  group_wait: 30s\r\n  group_interval: 5m\r\n
+    \ repeat_interval: 4h\r\n  receiver: oncall-relay\r\n  routes:\r\n    - matchers:\r\n
+    \       - oncall_action = auto-fix\r\n      receiver: oncall-relay\r\n      continue:
+    true\r\n    - matchers:\r\n        - oncall_action = scale-advisory\r\n      receiver:
+    oncall-relay\r\n\r\nreceivers:\r\n  - name: oncall-relay\r\n    webhook_configs:\r\n
+    \     - url: http://oncall-relay.observability.svc.cluster.local:8787/webhook\r\n
+    \       send_resolved: true\r\n\r\ninhibit_rules:\r\n  - source_matchers:\r\n
+    \     - alertname = MyAppDown\r\n    target_matchers:\r\n      - alertname = MyAppHighErrorRate\r\n
+    \   equal: [\"service\"]\r\n"
+kind: ConfigMap
+metadata:
+  name: alertmanager-config-4b7m58m2b6
+  namespace: observability
+---
+apiVersion: v1
+data:
+  contact-points.yaml: "apiVersion: 1\r\n\r\n# Contact Point 璺敱锛歕r\n# - MyAppErrorLogSpike锛圠oki锛夆啋
+    oncall-relay 鈫?log-alert 鑷姩淇\r\n# - MyAppPromtailLogNotify锛圥romtail 閲囬泦娴侊級鈫?log-notify-only
+    鈫?閭欢/椋炰功锛堥渶閰嶇疆 SMTP 鎴栨敼 Webhook锛塡r\ncontactPoints:\r\n  - orgId: 1\r\n    name: oncall-relay\r\n
+    \   receivers:\r\n      - uid: oncall_relay_webhook\r\n        type: webhook\r\n
+    \       settings:\r\n          url: http://oncall-relay:8787/webhook\r\n          httpMethod:
+    POST\r\n        disableResolveMessage: false\r\n\r\n  - orgId: 1\r\n    name:
+    log-notify-only\r\n    receivers:\r\n      - uid: log_notify_email\r\n        type:
+    email\r\n        settings:\r\n          addresses: ops@example.com\r\n          singleEmail:
+    false\r\n        disableResolveMessage: false\r\n\r\npolicies:\r\n  - orgId: 1\r\n
+    \   receiver: log-notify-only\r\n    group_by:\r\n      - alertname\r\n    group_wait:
+    30s\r\n    group_interval: 5m\r\n    repeat_interval: 4h\r\n    routes:\r\n      -
+    receiver: oncall-relay\r\n        matchers:\r\n          - alertname = MyAppErrorLogSpike\r\n
+    \     - receiver: log-notify-only\r\n        matchers:\r\n          - alertname
+    = MyAppPromtailLogNotify\r\n"
+  rules.yaml: "apiVersion: 1\r\n\r\n# Grafana Loki 鍛婅锛堟棩蹇楃粡 Promtail 鈫?Loki锛塡r\n# -
+    MyAppErrorLogSpike锛歀oki 璇勪及 鈫?oncall-relay 鈫?log-alert 鑷姩淇\r\n# - MyAppPromtailLogNotify锛歅romtail
+    閲囬泦娴?鈫?浠呴€氱煡锛堥偖浠剁瓑锛夛紝涓?auto-fix\r\ngroups:\r\n  - orgId: 1\r\n    name: myapp-log-alerts\r\n
+    \   folder: Oncall\r\n    interval: 1m\r\n    rules:\r\n      - uid: myapp_error_log_spike\r\n
+    \       title: MyAppErrorLogSpike\r\n        condition: C\r\n        data:\r\n
+    \         - refId: A\r\n            relativeTimeRange:\r\n              from:
+    300\r\n              to: 0\r\n            datasourceUid: loki\r\n            model:\r\n
+    \             editorMode: code\r\n              expr: 'sum(count_over_time({job=\"myapp\",
+    ingest=\"promtail\"} | json | level=\"ERROR\" [5m]))'\r\n              queryType:
+    instant\r\n              refId: A\r\n          - refId: B\r\n            relativeTimeRange:\r\n
+    \             from: 0\r\n              to: 0\r\n            datasourceUid: __expr__\r\n
+    \           model:\r\n              conditions:\r\n                - evaluator:\r\n
+    \                   params: []\r\n                    type: gt\r\n                  operator:\r\n
+    \                   type: and\r\n                  query:\r\n                    params:
+    [A]\r\n                  reducer:\r\n                    params: []\r\n                    type:
+    last\r\n                  type: query\r\n              datasource:\r\n                type:
+    __expr__\r\n                uid: __expr__\r\n              expression: A\r\n              reducer:
+    last\r\n              refId: B\r\n              type: reduce\r\n          - refId:
+    C\r\n            relativeTimeRange:\r\n              from: 0\r\n              to:
+    0\r\n            datasourceUid: __expr__\r\n            model:\r\n              conditions:\r\n
+    \               - evaluator:\r\n                    params: [3]\r\n                    type:
+    gt\r\n                  operator:\r\n                    type: and\r\n                  query:\r\n
+    \                   params: [C]\r\n                  reducer:\r\n                    params:
+    []\r\n                    type: last\r\n                  type: query\r\n              expression:
+    B\r\n              refId: C\r\n              type: threshold\r\n        noDataState:
+    OK\r\n        execErrState: Alerting\r\n        for: 5m\r\n        annotations:\r\n
+    \         summary: myapp ERROR 鏃ュ織婵€澧烇紙5 鍒嗛挓鍐?>3 鏉★級\r\n          description: Loki
+    鍛婅 鈫?oncall-relay 鈫?log-alert 鑷姩淇銆俓r\n        labels:\r\n          severity:
+    critical\r\n          oncall_action: auto-fix\r\n          alert_channel: loki\r\n
+    \       isPaused: false\r\n\r\n      - uid: myapp_promtail_log_notify\r\n        title:
+    MyAppPromtailLogNotify\r\n        condition: C\r\n        data:\r\n          -
+    refId: A\r\n            relativeTimeRange:\r\n              from: 300\r\n              to:
+    0\r\n            datasourceUid: loki\r\n            model:\r\n              editorMode:
+    code\r\n              expr: 'sum(count_over_time({job=\"myapp\", ingest=\"promtail\"}
+    | json | level=\"ERROR\" [5m]))'\r\n              queryType: instant\r\n              refId:
+    A\r\n          - refId: B\r\n            relativeTimeRange:\r\n              from:
+    0\r\n              to: 0\r\n            datasourceUid: __expr__\r\n            model:\r\n
+    \             conditions:\r\n                - evaluator:\r\n                    params:
+    []\r\n                    type: gt\r\n                  operator:\r\n                    type:
+    and\r\n                  query:\r\n                    params: [A]\r\n                  reducer:\r\n
+    \                   params: []\r\n                    type: last\r\n                  type:
+    query\r\n              datasource:\r\n                type: __expr__\r\n                uid:
+    __expr__\r\n              expression: A\r\n              reducer: last\r\n              refId:
+    B\r\n              type: reduce\r\n          - refId: C\r\n            relativeTimeRange:\r\n
+    \             from: 0\r\n              to: 0\r\n            datasourceUid: __expr__\r\n
+    \           model:\r\n              conditions:\r\n                - evaluator:\r\n
+    \                   params: [0]\r\n                    type: gt\r\n                  operator:\r\n
+    \                   type: and\r\n                  query:\r\n                    params:
+    [C]\r\n                  reducer:\r\n                    params: []\r\n                    type:
+    last\r\n                  type: query\r\n              expression: B\r\n              refId:
+    C\r\n              type: threshold\r\n        noDataState: OK\r\n        execErrState:
+    Alerting\r\n        for: 2m\r\n        annotations:\r\n          summary: Promtail
+    閲囬泦鍒?ERROR 鏃ュ織锛? 鍒嗛挓鍐?鈮? 鏉★級\r\n          description: 浠呴€氱煡杩愮淮锛堥偖浠?椋炰功绛夛級锛屼笉瑙﹀彂 auto-fix銆俓r\n
+    \       labels:\r\n          severity: warning\r\n          notify_only: \"true\"\r\n
+    \         alert_channel: promtail\r\n        isPaused: false\r\n"
+kind: ConfigMap
+metadata:
+  name: grafana-alerting-m68mbhcf2b
+  namespace: observability
+---
+apiVersion: v1
+data:
+  datasources.yml: "apiVersion: 1\r\n\r\ndatasources:\r\n  - name: Prometheus\r\n
+    \   type: prometheus\r\n    uid: prometheus\r\n    access: proxy\r\n    url: http://prometheus:9090\r\n
+    \   isDefault: true\r\n\r\n  - name: Loki\r\n    type: loki\r\n    uid: loki\r\n
+    \   access: proxy\r\n    url: http://loki:3100\r\n\r\n  - name: Tempo\r\n    type:
+    tempo\r\n    uid: tempo\r\n    access: proxy\r\n    url: http://tempo:3200\r\n"
+kind: ConfigMap
+metadata:
+  name: grafana-datasources-5mc7949gd7
+  namespace: observability
+---
+apiVersion: v1
+data:
+  loki.yaml: "# Loki 鍗曡妭鐐癸紙闆嗙兢鍐?Service 鍚?loki锛塡r\nauth_enabled: false\r\n\r\nserver:\r\n
+    \ http_listen_port: 3100\r\n  grpc_listen_port: 9096\r\n\r\ncommon:\r\n  path_prefix:
+    /loki\r\n  storage:\r\n    filesystem:\r\n      chunks_directory: /loki/chunks\r\n
+    \     rules_directory: /loki/rules\r\n  replication_factor: 1\r\n  ring:\r\n    kvstore:\r\n
+    \     store: inmemory\r\n\r\nschema_config:\r\n  configs:\r\n    - from: 2020-10-24\r\n
+    \     store: tsdb\r\n      object_store: filesystem\r\n      schema: v13\r\n      index:\r\n
+    \       prefix: index_\r\n        period: 24h\r\n\r\nruler:\r\n  alertmanager_url:
+    http://alertmanager.observability.svc.cluster.local:9093\r\n\r\nlimits_config:\r\n
+    \ reject_old_samples: true\r\n  reject_old_samples_max_age: 168h\r\n\r\nanalytics:\r\n
+    \ reporting_enabled: false\r\n"
+kind: ConfigMap
+metadata:
+  name: loki-config-fh9562hc9h
+  namespace: observability
+---
+apiVersion: v1
+data:
+  oncall_relay.py: "#!/usr/bin/env python3
+
+\"\"\"
+
+Grafana / Alertmanager Webhook 中继：转发至 GitHub repository_dispatch。
+
+
+
+环境变量：
+
+  GITHUB_TOKEN      - 具有 repo + actions 权限的 PAT
+
+  GITHUB_REPO       - owner/repo
+
+  ONCALL_WEBHOOK_SECRET - 与 GitHub Secrets 一致的校验密钥
+
+  ONCALL_ENABLED    - true/false，熔断开关
+
+  ONCALL_COOLDOWN_SEC - 同类告警冷却时间（默认 3600）
+
+  LOG_ALERT_AUTO_FIX_ENABLED - true 时 Loki 规则 MyAppErrorLogSpike 才 dispatch（默认 true）
+
+\"\"\"
+
+
+
+from __future__ import annotations
+
+
+
+import json
+
+import logging
+
+import os
+
+import time
+
+import urllib.error
+
+import urllib.request
+
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
+from pathlib import Path
+
+from typing import Any
+
+
+
+logging.basicConfig(level=logging.INFO, format=\"%(asctime)s %(levelname)s %(message)s\")
+
+logger = logging.getLogger(\"oncall-relay\")
+
+
+
+COOLDOWN_FILE = Path(os.getenv(\"ONCALL_STATE_FILE\", \"/tmp/oncall_cooldown.json\"))
+
+DEFAULT_COOLDOWN = int(os.getenv(\"ONCALL_COOLDOWN_SEC\", \"3600\"))
+
+LOG_ALERT_AUTO_FIX_ENABLED = os.getenv(\"LOG_ALERT_AUTO_FIX_ENABLED\", \"true\").lower() == \"true\"
+
+# 仅 Loki 激增规则走 auto-fix；Promtail 通知规则不应指向 relay
+
+AUTO_FIX_LOG_ALERT_NAMES = frozenset({\"MyAppErrorLogSpike\"})
+
+
+
+
+
+def load_cooldown() -> dict[str, float]:
+
+    \"\"\"加载告警冷却状态。\"\"\"
+
+    if not COOLDOWN_FILE.exists():
+
+        return {}
+
+    try:
+
+        return json.loads(COOLDOWN_FILE.read_text(encoding=\"utf-8\"))
+
+    except json.JSONDecodeError:
+
+        return {}
+
+
+
+
+
+def save_cooldown(state: dict[str, float]) -> None:
+
+    \"\"\"持久化冷却状态。\"\"\"
+
+    COOLDOWN_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+    COOLDOWN_FILE.write_text(json.dumps(state), encoding=\"utf-8\")
+
+
+
+
+
+def is_cooled_down(alert_key: str, cooldown_sec: int) -> bool:
+
+    \"\"\"检查是否在冷却期内。\"\"\"
+
+    state = load_cooldown()
+
+    last = state.get(alert_key, 0)
+
+    if time.time() - last < cooldown_sec:
+
+        return True
+
+    state[alert_key] = time.time()
+
+    save_cooldown(state)
+
+    return False
+
+
+
+
+
+def parse_alertmanager_payload(body: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+
+    \"\"\"解析 Alertmanager webhook 格式。\"\"\"
+
+    alerts = body.get(\"alerts\", [])
+
+    if not alerts:
+
+        return \"metric-alert\", body
+
+
+
+    first = alerts[0]
+
+    labels = first.get(\"labels\", {})
+
+    alert_type = labels.get(\"alert_type\", \"metric-alert\")
+
+    oncall_action = labels.get(\"oncall_action\", \"auto-fix\")
+
+
+
+    if oncall_action == \"scale-advisory\":
+
+        alert_type = \"scale-advisory\"
+
+
+
+    payload = {
+
+        \"source\": \"alertmanager\",
+
+        \"status\": body.get(\"status\"),
+
+        \"alerts\": alerts,
+
+        \"commonLabels\": body.get(\"commonLabels\", {}),
+
+        \"commonAnnotations\": body.get(\"commonAnnotations\", {}),
+
+    }
+
+    return alert_type, payload
+
+
+
+
+
+def parse_grafana_payload(body: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+
+    \"\"\"解析 Grafana Unified Alerting webhook 格式。\"\"\"
+
+    alerts = body.get(\"alerts\", body.get(\"evalMatches\", []))
+
+    payload = {
+
+        \"source\": \"grafana\",
+
+        \"status\": body.get(\"status\", body.get(\"state\", \"alerting\")),
+
+        \"title\": body.get(\"title\", body.get(\"ruleName\", \"\")),
+
+        \"message\": body.get(\"message\", \"\"),
+
+        \"alerts\": alerts if isinstance(alerts, list) else [alerts],
+
+    }
+
+    # Grafana Loki 日志告警默认走 auto-fix
+
+    return \"log-alert\", payload
+
+
+
+
+
+def dispatch_github(event_type: str, client_payload: dict[str, Any]) -> None:
+
+    \"\"\"调用 GitHub repository_dispatch API。\"\"\"
+
+    token = os.environ.get(\"GITHUB_TOKEN\", \"\")
+
+    repo = os.environ.get(\"GITHUB_REPO\", \"\")
+
+    if not token or not repo:
+
+        raise RuntimeError(\"缺少 GITHUB_TOKEN 或 GITHUB_REPO 环境变量\")
+
+
+
+    secret = os.environ.get(\"ONCALL_WEBHOOK_SECRET\", \"\")
+
+    client_payload[\"webhook_secret\"] = secret
+
+
+
+    url = f\"https://api.github.com/repos/{repo}/dispatches\"
+
+    data = json.dumps({\"event_type\": event_type, \"client_payload\": client_payload}).encode()
+
+    req = urllib.request.Request(
+
+        url,
+
+        data=data,
+
+        method=\"POST\",
+
+        headers={
+
+            \"Authorization\": f\"Bearer {token}\",
+
+            \"Accept\": \"application/vnd.github+json\",
+
+            \"Content-Type\": \"application/json\",
+
+            \"X-GitHub-Api-Version\": \"2022-11-28\",
+
+        },
+
+    )
+
+    with urllib.request.urlopen(req, timeout=30) as resp:
+
+        logger.info(\"GitHub dispatch 成功: %s %s\", event_type, resp.status)
+
+
+
+
+
+def dispatch_cursor_automation(client_payload: dict[str, Any]) -> None:
+
+    \"\"\"可选：转发至 Cursor Automation Webhook。\"\"\"
+
+    url = os.environ.get(\"CURSOR_AUTOMATION_WEBHOOK_URL\", \"\")
+
+    if not url:
+
+        return
+
+
+
+    secret = os.environ.get(\"CURSOR_AUTOMATION_WEBHOOK_SECRET\", \"\")
+
+    headers = {
+
+        \"Content-Type\": \"application/json\",
+
+        \"Accept\": \"application/json\",
+
+    }
+
+    if secret:
+
+        headers[\"Authorization\"] = f\"Bearer {secret}\"
+
+
+
+    data = json.dumps(client_payload).encode()
+
+    req = urllib.request.Request(url, data=data, method=\"POST\", headers=headers)
+
+    with urllib.request.urlopen(req, timeout=30) as resp:
+
+        logger.info(\"Cursor Automation webhook 成功: %s\", resp.status)
+
+
+
+
+
+class WebhookHandler(BaseHTTPRequestHandler):
+
+    \"\"\"HTTP Webhook 处理器。\"\"\"
+
+
+
+    def do_POST(self) -> None:
+
+        if self.path not in (\"/webhook\", \"/\"):
+
+            self.send_error(404)
+
+            return
+
+
+
+        if os.getenv(\"ONCALL_ENABLED\", \"true\").lower() != \"true\":
+
+            logger.warning(\"ONCALL_ENABLED=false，忽略告警\")
+
+            self._json_response(200, {\"status\": \"disabled\"})
+
+            return
+
+
+
+        length = int(self.headers.get(\"Content-Length\", 0))
+
+        raw = self.rfile.read(length)
+
+        try:
+
+            body = json.loads(raw.decode(\"utf-8\"))
+
+        except json.JSONDecodeError:
+
+            self.send_error(400, \"invalid json\")
+
+            return
+
+
+
+        # 区分 Alertmanager vs Grafana
+
+        if \"alerts\" in body and \"commonLabels\" in body:
+
+            event_type, payload = parse_alertmanager_payload(body)
+
+        else:
+
+            event_type, payload = parse_grafana_payload(body)
+
+
+
+        if event_type == \"log-alert\":
+
+            alert_name = str(payload.get(\"title\", \"\"))
+
+            if alert_name not in AUTO_FIX_LOG_ALERT_NAMES:
+
+                logger.info(
+
+                    \"log-alert %s 为 Promtail 仅通知规则，忽略 auto-fix dispatch\",
+
+                    alert_name or \"(unknown)\",
+
+                )
+
+                self._json_response(
+
+                    200,
+
+                    {\"status\": \"ignored\", \"reason\": \"notify-only log alert\"},
+
+                )
+
+                return
+
+            if not LOG_ALERT_AUTO_FIX_ENABLED:
+
+                logger.info(\"log-alert 已禁用（LOG_ALERT_AUTO_FIX_ENABLED=false），忽略 dispatch\")
+
+                self._json_response(
+
+                    200,
+
+                    {\"status\": \"ignored\", \"reason\": \"log-alert auto-fix disabled\"},
+
+                )
+
+                return
+
+
+
+        alert_key = payload.get(\"commonLabels\", {}).get(\"alertname\") or payload.get(
+
+            \"title\", event_type
+
+        )
+
+        if is_cooled_down(str(alert_key), DEFAULT_COOLDOWN):
+
+            logger.info(\"告警 %s 在冷却期内，跳过\", alert_key)
+
+            self._json_response(200, {\"status\": \"cooldown\", \"alert\": alert_key})
+
+            return
+
+
+
+        try:
+
+            dispatch_github(event_type, payload)
+
+            # 可选：同时转发至 Cursor Automation（见 .cursor/automations/）
+
+            try:
+
+                dispatch_cursor_automation(payload)
+
+            except urllib.error.HTTPError:
+
+                logger.exception(\"Cursor Automation 转发失败（GitHub dispatch 已成功）\")
+
+            self._json_response(200, {\"status\": \"dispatched\", \"event_type\": event_type})
+
+        except (urllib.error.HTTPError, RuntimeError) as exc:
+
+            logger.exception(\"转发失败\")
+
+            self._json_response(502, {\"status\": \"error\", \"detail\": str(exc)})
+
+
+
+    def _json_response(self, code: int, data: dict[str, Any]) -> None:
+
+        self.send_response(code)
+
+        self.send_header(\"Content-Type\", \"application/json\")
+
+        self.end_headers()
+
+        self.wfile.write(json.dumps(data).encode())
+
+
+
+    def log_message(self, fmt: str, *args: object) -> None:
+
+        logger.info(fmt, *args)
+
+
+
+
+
+def main() -> None:
+
+    \"\"\"启动 webhook 中继服务。\"\"\"
+
+    port = int(os.getenv(\"ONCALL_RELAY_PORT\", \"8787\"))
+
+    server = HTTPServer((\"0.0.0.0\", port), WebhookHandler)
+
+    logger.info(\"oncall-relay 监听 :%s → GitHub %s\", port, os.getenv(\"GITHUB_REPO\", \"(未配置)\"))
+
+    server.serve_forever()
+
+
+
+
+
+if __name__ == \"__main__\":
+
+    main()
+
+"
+kind: ConfigMap
+metadata:
+  name: oncall-relay-script-f9df28h7g6
+  namespace: observability
+---
+apiVersion: v1
+data:
+  alerts.yml: "# Prometheus 鍛婅瑙勫垯锛氭棩蹇?鎸囨爣寮傚父涓庢墿瀹瑰缓璁甛r\ngroups:\r\n  - name: myapp-alerts\r\n
+    \   rules:\r\n      # 5xx 閿欒鐜囪秴杩?5% 鎸佺画 5 鍒嗛挓 鈫?瑙﹀彂鑷姩淇\r\n      - alert: MyAppHighErrorRate\r\n
+    \       expr: |\r\n          (\r\n            sum(rate(http_requests_total{status=~\"5..\"}[5m]))\r\n
+    \           /\r\n            clamp_min(sum(rate(http_requests_total[5m])), 0.001)\r\n
+    \         ) > 0.05\r\n        for: 5m\r\n        labels:\r\n          severity:
+    critical\r\n          oncall_action: auto-fix\r\n          alert_type: metric-alert\r\n
+    \       annotations:\r\n          summary: \"myapp 5xx 閿欒鐜囪繃楂过高\"\r\n          description:
+    \"5xx 鍗犳瘮瓒呰繃 5%锛屾寔缁?5 鍒嗛挓锛屽皢瑙﹀彂鑷姩淇娴佺▼。\"\r\n\r\n      # P95 寤惰繜瓒呰繃 2s 鈫?瑙﹀彂鎵╁鍒嗘瀽\r\n      -
+    alert: MyAppHighLatency\r\n        expr: |\r\n          histogram_quantile(\r\n
+    \           0.95,\r\n            sum(rate(http_request_duration_seconds_bucket[5m]))
+    by (le)\r\n          ) > 2\r\n        for: 10m\r\n        labels:\r\n          severity:
+    warning\r\n          oncall_action: scale-advisory\r\n          alert_type: scale-advisory\r\n
+    \       annotations:\r\n          summary: \"myapp P95 寤惰繜杩囬珮\"\r\n          description:
+    \"P95 寤惰繜瓒呰繃 2s锛屽缓璁鏌?HPA 閰嶇疆鎴栨暟鎹簱鐡堕。\"\r\n\r\n      # 璇锋眰 QPS 鎸佺画鍋忛珮 鈫?鎵╁寤鸿\r\n      -
+    alert: MyAppHighQPS\r\n        expr: sum(rate(http_requests_total[5m])) > 100\r\n
+    \       for: 15m\r\n        labels:\r\n          severity: warning\r\n          oncall_action:
+    scale-advisory\r\n          alert_type: scale-advisory\r\n        annotations:\r\n
+    \         summary: \"myapp QPS 鎸佺画鍋忛珮\"\r\n          description: \"QPS 瓒呰繃 100 鎸佺画
+    15 鍒嗛挓锛屽彲鑰冭檻澧炲姞 HPA maxReplicas。\"\r\n\r\n      # 搴旂敤涓嶅彲杈?鈫?绱ф€ヤ慨澶峔r\n      - alert: MyAppDown\r\n
+    \       expr: up{job=\"myapp\"} == 0\r\n        for: 2m\r\n        labels:\r\n
+    \         severity: critical\r\n          oncall_action: auto-fix\r\n          alert_type:
+    metric-alert\r\n        annotations:\r\n          summary: \"myapp 鎸囨爣绔偣涓嶅彲达\"\r\n
+    \         description: \"Prometheus 鏃犳硶鎶撳彇 /metrics锛屽簲鐢ㄥ彲鑳藉凡宕╂簝。\"\r\n"
+  prometheus.yml: "global:\r\n  scrape_interval: 15s\r\n  evaluation_interval: 15s\r\n\r\nalerting:\r\n
+    \ alertmanagers:\r\n    - static_configs:\r\n        - targets:\r\n            -
+    alertmanager.observability.svc.cluster.local:9093\r\n\r\nrule_files:\r\n  - /etc/prometheus/alerts.yml\r\n\r\nscrape_configs:\r\n
+    \ - job_name: myapp\r\n    metrics_path: /metrics\r\n    static_configs:\r\n      -
+    targets:\r\n          - myapp.myapp.svc.cluster.local:80\r\n        labels:\r\n
+    \         service: myapp\r\n"
+kind: ConfigMap
+metadata:
+  name: prometheus-config-8ttf965hkc
+  namespace: observability
+---
+apiVersion: v1
+data:
+  config.yml: "server:\r\n  http_listen_port: 9080\r\n  grpc_listen_port: 0\r\n\r\npositions:\r\n
+    \ filename: /tmp/positions.yaml\r\n\r\nclients:\r\n  - url: http://loki.observability.svc.cluster.local:3100/loki/api/v1/push\r\n\r\nscrape_configs:\r\n
+    \ - job_name: kubernetes-pods-myapp\r\n    kubernetes_sd_configs:\r\n      - role:
+    pod\r\n        namespaces:\r\n          names:\r\n            - myapp\r\n    pipeline_stages:\r\n
+    \     - cri: {}\r\n    relabel_configs:\r\n      - action: keep\r\n        source_labels:
+    [__meta_kubernetes_namespace]\r\n        regex: myapp\r\n      - action: keep\r\n
+    \       source_labels: [__meta_kubernetes_pod_label_app]\r\n        regex: myapp\r\n
+    \     - action: replace\r\n        source_labels: [__meta_kubernetes_pod_name]\r\n
+    \       target_label: pod\r\n      - action: replace\r\n        source_labels:
+    [__meta_kubernetes_namespace]\r\n        target_label: namespace\r\n      - action:
+    replace\r\n        target_label: job\r\n        replacement: myapp\r\n      -
+    action: replace\r\n        target_label: service\r\n        replacement: myapp\r\n
+    \     - action: replace\r\n        target_label: ingest\r\n        replacement:
+    promtail\r\n"
+kind: ConfigMap
+metadata:
+  name: promtail-config-g299ttth8b
+  namespace: observability
+---
+apiVersion: v1
+data:
+  tempo.yaml: "server:\r\n  http_listen_port: 3200\r\n\r\ndistributor:\r\n  receivers:\r\n
+    \   otlp:\r\n      protocols:\r\n        grpc:\r\n          endpoint: 0.0.0.0:4317\r\n\r\ningester:\r\n
+    \ trace_idle_period: 10s\r\n  max_block_bytes: 1_000_000\r\n  max_block_duration:
+    5m\r\n\r\ncompactor:\r\n  compaction:\r\n    block_retention: 1h\r\n\r\nstorage:\r\n
+    \ trace:\r\n    backend: local\r\n    local:\r\n      path: /tmp/tempo/traces\r\n
+    \   wal:\r\n      path: /tmp/tempo/wal\r\n"
+kind: ConfigMap
+metadata:
+  name: tempo-config-cdft4k8bkb
+  namespace: observability
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: myapp-secrets
+  namespace: myapp
+stringData:
+  database-url: postgresql+asyncpg://myapp:myapp@postgres.myapp.svc.cluster.local:5432/myapp
+type: Opaque
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: oncall-relay-secrets
+  namespace: observability
+stringData:
+  CURSOR_AUTOMATION_WEBHOOK_SECRET: ""
+  CURSOR_AUTOMATION_WEBHOOK_URL: ""
+  GITHUB_REPO: ""
+  GITHUB_TOKEN: ""
+  ONCALL_WEBHOOK_SECRET: ""
+type: Opaque
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: myapp
+  name: myapp
+  namespace: myapp
+spec:
+  ports:
+  - name: http
+    nodePort: 30800
+    port: 80
+    targetPort: 8000
+  selector:
+    app: myapp
+  type: NodePort
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: postgres
+  name: postgres
+  namespace: myapp
+spec:
+  ports:
+  - port: 5432
+    targetPort: 5432
+  selector:
+    app: postgres
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: alertmanager
+  name: alertmanager
+  namespace: observability
+spec:
+  ports:
+  - name: http
+    nodePort: 30993
+    port: 9093
+    targetPort: 9093
+  selector:
+    app: alertmanager
+  type: NodePort
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: grafana
+  name: grafana
+  namespace: observability
+spec:
+  ports:
+  - name: http
+    nodePort: 30300
+    port: 3000
+    targetPort: 3000
+  selector:
+    app: grafana
+  type: NodePort
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: loki
+  name: loki
+  namespace: observability
+spec:
+  ports:
+  - name: http
+    nodePort: 31310
+    port: 3100
+    targetPort: 3100
+  selector:
+    app: loki
+  type: NodePort
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: oncall-relay
+  name: oncall-relay
+  namespace: observability
+spec:
+  ports:
+  - name: http
+    nodePort: 38787
+    port: 8787
+    targetPort: 8787
+  selector:
+    app: oncall-relay
+  type: NodePort
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: prometheus
+  name: prometheus
+  namespace: observability
+spec:
+  ports:
+  - name: http
+    nodePort: 30990
+    port: 9090
+    targetPort: 9090
+  selector:
+    app: prometheus
+  type: NodePort
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: tempo
+  name: tempo
+  namespace: observability
+spec:
+  ports:
+  - name: http
+    nodePort: 32000
+    port: 3200
+    targetPort: 3200
+  - name: otlp-grpc
+    nodePort: 34317
+    port: 4317
+    targetPort: 4317
+  selector:
+    app: tempo
+  type: NodePort
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: myapp
+  name: myapp
+  namespace: myapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: myapp
+  template:
+    metadata:
+      annotations:
+        prometheus.io/path: /metrics
+        prometheus.io/port: "8000"
+        prometheus.io/scrape: "true"
+      labels:
+        app: myapp
+    spec:
+      containers:
+      - env:
+        - name: APP_ENV
+          value: production
+        - name: LOG_LEVEL
+          value: INFO
+        - name: OTEL_ENABLED
+          value: "true"
+        - name: OTEL_EXPORTER_ENDPOINT
+          value: http://tempo.observability.svc.cluster.local:4317
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              key: database-url
+              name: myapp-secrets
+        image: myapp:latest
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        name: myapp
+        ports:
+        - containerPort: 8000
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 256Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: alertmanager
+  name: alertmanager
+  namespace: observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alertmanager
+  template:
+    metadata:
+      labels:
+        app: alertmanager
+    spec:
+      containers:
+      - args:
+        - --config.file=/etc/alertmanager/alertmanager.yml
+        image: prom/alertmanager:v0.27.0
+        name: alertmanager
+        ports:
+        - containerPort: 9093
+        resources:
+          limits:
+            cpu: 200m
+            memory: 256Mi
+          requests:
+            cpu: 50m
+            memory: 64Mi
+        volumeMounts:
+        - mountPath: /etc/alertmanager
+          name: config
+      volumes:
+      - configMap:
+          name: alertmanager-config-4b7m58m2b6
+        name: config
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: grafana
+  name: grafana
+  namespace: observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+      - env:
+        - name: GF_SECURITY_ADMIN_USER
+          value: admin
+        - name: GF_SECURITY_ADMIN_PASSWORD
+          value: admin
+        - name: GF_UNIFIED_ALERTING_ENABLED
+          value: "true"
+        image: grafana/grafana:11.3.0
+        name: grafana
+        ports:
+        - containerPort: 3000
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 256Mi
+        volumeMounts:
+        - mountPath: /etc/grafana/provisioning/datasources
+          name: grafana-datasources
+        - mountPath: /etc/grafana/provisioning/alerting
+          name: grafana-alerting
+      volumes:
+      - configMap:
+          name: grafana-datasources-5mc7949gd7
+        name: grafana-datasources
+      - configMap:
+          name: grafana-alerting-m68mbhcf2b
+        name: grafana-alerting
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: oncall-relay
+  name: oncall-relay
+  namespace: observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: oncall-relay
+  template:
+    metadata:
+      labels:
+        app: oncall-relay
+    spec:
+      containers:
+      - command:
+        - python
+        - /app/oncall_relay.py
+        env:
+        - name: GITHUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: GITHUB_TOKEN
+              name: oncall-relay-secrets
+              optional: true
+        - name: GITHUB_REPO
+          valueFrom:
+            secretKeyRef:
+              key: GITHUB_REPO
+              name: oncall-relay-secrets
+              optional: true
+        - name: ONCALL_WEBHOOK_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: ONCALL_WEBHOOK_SECRET
+              name: oncall-relay-secrets
+              optional: true
+        - name: ONCALL_ENABLED
+          value: "true"
+        - name: ONCALL_COOLDOWN_SEC
+          value: "3600"
+        - name: LOG_ALERT_AUTO_FIX_ENABLED
+          value: "true"
+        - name: CURSOR_AUTOMATION_WEBHOOK_URL
+          valueFrom:
+            secretKeyRef:
+              key: CURSOR_AUTOMATION_WEBHOOK_URL
+              name: oncall-relay-secrets
+              optional: true
+        - name: CURSOR_AUTOMATION_WEBHOOK_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: CURSOR_AUTOMATION_WEBHOOK_SECRET
+              name: oncall-relay-secrets
+              optional: true
+        image: python:3.12-slim
+        name: oncall-relay
+        ports:
+        - containerPort: 8787
+        resources:
+          limits:
+            cpu: 200m
+            memory: 256Mi
+          requests:
+            cpu: 50m
+            memory: 64Mi
+        volumeMounts:
+        - mountPath: /app/oncall_relay.py
+          name: script
+          subPath: oncall_relay.py
+        - mountPath: /tmp
+          name: state
+      volumes:
+      - configMap:
+          defaultMode: 292
+          name: oncall-relay-script-f9df28h7g6
+        name: script
+      - emptyDir: {}
+        name: state
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: prometheus
+  name: prometheus
+  namespace: observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      containers:
+      - args:
+        - --config.file=/etc/prometheus/prometheus.yml
+        - --storage.tsdb.path=/prometheus
+        - --web.enable-lifecycle
+        image: prom/prometheus:v2.55.0
+        name: prometheus
+        ports:
+        - containerPort: 9090
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 256Mi
+        volumeMounts:
+        - mountPath: /etc/prometheus
+          name: config
+      volumes:
+      - configMap:
+          name: prometheus-config-8ttf965hkc
+        name: config
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: tempo
+  name: tempo
+  namespace: observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tempo
+  template:
+    metadata:
+      labels:
+        app: tempo
+    spec:
+      containers:
+      - args:
+        - -config.file=/etc/tempo.yaml
+        image: grafana/tempo:2.6.0
+        name: tempo
+        ports:
+        - containerPort: 3200
+        - containerPort: 4317
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 256Mi
+        volumeMounts:
+        - mountPath: /etc/tempo.yaml
+          name: config
+          subPath: tempo.yaml
+      volumes:
+      - configMap:
+          name: tempo-config-cdft4k8bkb
+        name: config
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: postgres
+  name: postgres
+  namespace: myapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  serviceName: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - env:
+        - name: POSTGRES_USER
+          value: myapp
+        - name: POSTGRES_PASSWORD
+          value: myapp
+        - name: POSTGRES_DB
+          value: myapp
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        image: postgres:16-alpine
+        livenessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - myapp
+            - -d
+            - myapp
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        name: postgres
+        ports:
+        - containerPort: 5432
+        readinessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - myapp
+            - -d
+            - myapp
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 256Mi
+        volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: postgres-data
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: loki
+  name: loki
+  namespace: observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: loki
+  serviceName: loki
+  template:
+    metadata:
+      labels:
+        app: loki
+    spec:
+      containers:
+      - args:
+        - -config.file=/etc/loki/loki.yaml
+        image: grafana/loki:3.2.0
+        name: loki
+        ports:
+        - containerPort: 3100
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 256Mi
+        volumeMounts:
+        - mountPath: /etc/loki
+          name: config
+        - mountPath: /loki
+          name: data
+      volumes:
+      - configMap:
+          name: loki-config-fh9562hc9h
+        name: config
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app: promtail
+  name: promtail
+  namespace: observability
+spec:
+  selector:
+    matchLabels:
+      app: promtail
+  template:
+    metadata:
+      labels:
+        app: promtail
+    spec:
+      containers:
+      - args:
+        - -config.file=/etc/promtail/config.yml
+        image: grafana/promtail:3.2.0
+        name: promtail
+        resources:
+          limits:
+            cpu: 200m
+            memory: 256Mi
+          requests:
+            cpu: 50m
+            memory: 64Mi
+        volumeMounts:
+        - mountPath: /etc/promtail
+          name: config
+        - mountPath: /var/log/pods
+          name: pods
+          readOnly: true
+        - mountPath: /var/lib/docker/containers
+          name: containers
+          readOnly: true
+      serviceAccountName: promtail
+      volumes:
+      - configMap:
+          name: promtail-config-g299ttth8b
+        name: config
+      - hostPath:
+          path: /var/log/pods
+        name: pods
+      - hostPath:
+          path: /var/lib/docker/containers
+        name: containers
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: myapp-hpa
+  namespace: myapp
+spec:
+  behavior:
+    scaleDown:
+      policies:
+      - periodSeconds: 120
+        type: Percent
+        value: 50
+      stabilizationWindowSeconds: 300
+    scaleUp:
+      policies:
+      - periodSeconds: 60
+        type: Percent
+        value: 100
+      stabilizationWindowSeconds: 60
+  maxReplicas: 3
+  metrics:
+  - resource:
+      name: cpu
+      target:
+        averageUtilization: 70
+        type: Utilization
+    type: Resource
+  - resource:
+      name: memory
+      target:
+        averageUtilization: 80
+        type: Utilization
+    type: Resource
+  minReplicas: 1
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: myapp
