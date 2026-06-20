@@ -149,7 +149,7 @@ kubectl apply -f deploy/k8s/deployment-hpa.yaml
 HPA 配置：
 
 - `minReplicas: 2`
-- `maxReplicas: 10`
+- `maxReplicas: 20`
 - CPU 目标 70%，内存 80%
 
 AI 收到 `scale-advisory` 时会审查并 PR 调整 HPA 参数。
