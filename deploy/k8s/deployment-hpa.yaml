@@ -74,7 +74,7 @@ spec:
     kind: Deployment
     name: myapp
   minReplicas: 2
-  maxReplicas: 10
+  maxReplicas: 20
   metrics:
     - type: Resource
       resource:
@@ -90,11 +90,15 @@ spec:
           averageUtilization: 80
   behavior:
     scaleUp:
-      stabilizationWindowSeconds: 60
+      stabilizationWindowSeconds: 30
       policies:
         - type: Percent
-          value: 100
+          value: 200
           periodSeconds: 60
+        - type: Pods
+          value: 4
+          periodSeconds: 60
+      selectPolicy: Max
     scaleDown:
       stabilizationWindowSeconds: 300
       policies:

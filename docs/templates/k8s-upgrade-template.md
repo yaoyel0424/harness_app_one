@@ -156,10 +156,10 @@ kubectl create secret generic myapp-secrets -n app \
 | 参数 | 当前默认值 | 目标值（填写） |
 |------|------------|----------------|
 | minReplicas | 2 | |
-| maxReplicas | 10 | |
+| maxReplicas | 20 | |
 | CPU 目标 | 70% | |
 | memory 目标 | 80% | |
-| scaleUp 稳定窗口 | 60s | |
+| scaleUp 稳定窗口 | 30s | |
 | scaleDown 稳定窗口 | 300s | |
 
 自定义指标（可选）：Prometheus Adapter 暴露 `http_requests_per_second`，与 `MyAppHighQPS` 告警对齐。
