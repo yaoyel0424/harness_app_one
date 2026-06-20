@@ -196,7 +196,7 @@ Compose 中 app 默认 `OTEL_ENABLED=false`。使用 Tempo 时需在 app 侧开�
 |------|------|
 | Deployment `myapp` | 2 副本起，镜像 `myapp:latest`，探针 `/health/live`、`/health/ready` |
 | Service `myapp` | ClusterIP，80 → 8000 |
-| HPA `myapp-hpa` | min 2 / max 10，CPU 70%、内存 80% |
+| HPA `myapp-hpa` | min 2 / max 20，CPU 70%、内存 80% |
 
 **不包含**：PostgreSQL、Loki、Promtail、Prometheus、Grafana（需自行准备或使用托管服务）。
 
@@ -243,6 +243,8 @@ HPA **仅针对 myapp Pod**。PostgreSQL、Loki、Promtail 等：
 - 不在本仓库 K8s 清单中；
 - 通常采用托管数据库、DaemonSet 采集日志、独立 observability 集群等方案；
 - 高延迟/QPS 告警可能需修代码或 DB，而非扩容观测组件。
+
+默认清单已为 `MyAppHighQPS` 预留 `maxReplicas: 20` 的扩容余量，并显式设置健康探针频率：存活探针每 20 秒检查 `/health/live`，就绪探针每 10 秒检查 `/health/ready`。
 
 HPA 参数调整与 `scale-advisory` 告警见 [自动运维 Runbook — 自动扩容](auto-ops.md)。
 

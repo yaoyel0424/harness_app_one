@@ -149,8 +149,9 @@ kubectl apply -f deploy/k8s/deployment-hpa.yaml
 HPA 配置：
 
 - `minReplicas: 2`
-- `maxReplicas: 10`
+- `maxReplicas: 20`
 - CPU 目标 70%，内存 80%
+- 探针显式配置：`/health/live` 每 20s 检查，`/health/ready` 每 10s 检查，避免高 QPS 场景下探针配置漂移额外放大流量
 
 AI 收到 `scale-advisory` 时会审查并 PR 调整 HPA 参数。
 
