@@ -195,7 +195,7 @@ Compose 中 app 默认 `OTEL_ENABLED=false`。使用 Tempo 时需在 app 侧开�
 | 资源 | 说明 |
 |------|------|
 | Deployment `myapp` | 2 副本起，镜像 `myapp:latest`，探针 `/health/live`、`/health/ready` |
-| Service `myapp` | ClusterIP，80 → 8000 |
+| Service `myapp` | ClusterIP，8000 → 8000，并带 Prometheus `/metrics` 抓取注解 |
 | HPA `myapp-hpa` | min 2 / max 10，CPU 70%、内存 80% |
 
 **不包含**：PostgreSQL、Loki、Promtail、Prometheus、Grafana（需自行准备或使用托管服务）。
@@ -226,7 +226,7 @@ Compose 中 app 默认 `OTEL_ENABLED=false`。使用 Tempo 时需在 app 侧开�
 
    ```bash
    kubectl get pods,svc,hpa -l app=myapp
-   kubectl port-forward svc/myapp 8080:80
+   kubectl port-forward svc/myapp 8080:8000
    # 访问 http://127.0.0.1:8080/health/ready
    ```
 
