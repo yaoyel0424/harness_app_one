@@ -746,11 +746,15 @@ metadata:
     app: myapp
   name: myapp
   namespace: myapp
+  annotations:
+    prometheus.io/path: /metrics
+    prometheus.io/port: "8000"
+    prometheus.io/scrape: "true"
 spec:
   ports:
   - name: http
     nodePort: 30800
-    port: 80
+    port: 8000
     targetPort: 8000
   selector:
     app: myapp

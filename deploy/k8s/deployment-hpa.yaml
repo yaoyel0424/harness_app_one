@@ -56,11 +56,16 @@ metadata:
   name: myapp
   labels:
     app: myapp
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: "/metrics"
+    prometheus.io/port: "8000"
 spec:
   selector:
     app: myapp
   ports:
-    - port: 80
+    - name: http
+      port: 8000
       targetPort: 8000
   type: ClusterIP
 ---

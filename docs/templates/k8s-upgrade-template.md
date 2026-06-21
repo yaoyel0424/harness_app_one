@@ -100,7 +100,7 @@ kubectl create secret generic myapp-secrets -n app \
 
 | 配置项 | Compose 现状 | K8s 目标 |
 |--------|--------------|----------|
-| Prometheus scrape | `host.docker.internal:8000` | ServiceMonitor 或 `myapp.app.svc:80/metrics` |
+| Prometheus scrape | `host.docker.internal:8000` | ServiceMonitor 或 `myapp.app.svc:8000/metrics` |
 | 应用日志 | `LOG_FILE` 写宿主机 `./logs` | stdout JSON 或 Promtail DaemonSet 采 Pod 日志 |
 | OTEL | `host.docker.internal:4317` | `tempo.observability.svc:4317` |
 | Alertmanager webhook | `host.docker.internal:8787` | `oncall-relay.observability.svc:8787` |
