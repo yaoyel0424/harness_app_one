@@ -73,6 +73,10 @@ LOG_FILE=logs/myapp.jsonl
 
 规则文件：`observability/prometheus/alerts.yml`
 
+`MyAppHighQPS` 使用 `http_requests_total` 评估业务 QPS。应用侧已排除
+`/health/live`、`/health/ready` 与 `/metrics`，避免 Kubernetes 探针和 Prometheus
+抓取流量放大 QPS 并触发误扩容。
+
 ### Grafana Loki 日志告警（双规则）
 
 日志链路：`应用 JSONL → Promtail（ingest=promtail）→ Loki → Grafana 评估`

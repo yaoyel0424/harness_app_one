@@ -15,6 +15,7 @@ from myapp.utils.logging import get_logger, setup_logging
 from myapp.utils.telemetry import setup_telemetry
 
 logger = get_logger(__name__)
+METRICS_EXCLUDED_HANDLERS = ("/health/live", "/health/ready", "/metrics")
 
 
 @asynccontextmanager
@@ -52,8 +53,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(items_router)
     register_exception_handlers(app)
 
-    # Prometheus /metrics 端点
-    Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
+    # Prometheus /metrics 端点；健康探针和抓取流量不应计入业务 QPS。
+    Instrumentator(excluded_handlers=list(METRICS_EXCLUDED_HANDLERS)).instrument(app).expose(
+        app,
+        endpoint="/metrics",
+        include_in_schema=False,
+    )
     register_response_middleware(app)
 
     return app
