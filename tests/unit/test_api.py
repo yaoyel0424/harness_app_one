@@ -55,6 +55,21 @@ async def test_metrics_endpoint(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
+async def test_health_checks_are_excluded_from_business_metrics(client: AsyncClient) -> None:
+    """健康检查不应计入业务请求指标，避免扩容告警被探针流量放大。"""
+    await client.get("/health/live")
+    await client.get("/health/ready")
+    await client.get("/items")
+
+    response = await client.get("/metrics")
+
+    assert response.status_code == 200
+    assert 'handler="/health/live"' not in response.text
+    assert 'handler="/health/ready"' not in response.text
+    assert 'handler="/items"' in response.text
+
+
+@pytest.mark.asyncio
 async def test_http_exception_returns_404(client: AsyncClient) -> None:
     """不存在的 Item 应返回 404 且使用统一错误包络。"""
     response = await client.get("/items/999999")
