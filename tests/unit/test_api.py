@@ -55,6 +55,22 @@ async def test_metrics_endpoint(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
+async def test_probe_and_metrics_paths_are_excluded_from_qps(client: AsyncClient) -> None:
+    """健康探针与指标抓取不应放大业务 QPS 指标。"""
+    await client.get("/health/live")
+    await client.get("/health/ready")
+    await client.get("/metrics")
+    await client.get("/items")
+
+    response = await client.get("/metrics")
+
+    assert 'http_requests_total{handler="/health/live"' not in response.text
+    assert 'http_requests_total{handler="/health/ready"' not in response.text
+    assert 'http_requests_total{handler="/metrics"' not in response.text
+    assert 'http_requests_total{handler="/items"' in response.text
+
+
+@pytest.mark.asyncio
 async def test_http_exception_returns_404(client: AsyncClient) -> None:
     """不存在的 Item 应返回 404 且使用统一错误包络。"""
     response = await client.get("/items/999999")
