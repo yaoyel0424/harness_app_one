@@ -198,6 +198,9 @@ Compose 中 app 默认 `OTEL_ENABLED=false`。使用 Tempo 时需在 app 侧开�
 | Service `myapp` | ClusterIP，80 → 8000 |
 | HPA `myapp-hpa` | min 2 / max 10，CPU 70%、内存 80% |
 
+Prometheus 请求指标会排除 `/health/live`、`/health/ready` 和 `/metrics`，因此
+`MyAppHighQPS` 反映业务流量，而不是探针或指标抓取本身。
+
 **不包含**：PostgreSQL、Loki、Promtail、Prometheus、Grafana（需自行准备或使用托管服务）。
 
 ### 3.2 部署步骤

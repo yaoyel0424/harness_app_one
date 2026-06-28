@@ -152,6 +152,10 @@ HPA 配置：
 - `maxReplicas: 10`
 - CPU 目标 70%，内存 80%
 
+`MyAppHighQPS` 基于 `http_requests_total` 评估业务请求速率。应用指标初始化已排除
+`/health/live`、`/health/ready` 与 `/metrics`，避免 Kubernetes 探针和 Prometheus 抓取流量
+触发误报；若告警仍持续，应继续检查真实业务入口、数据库瓶颈和 HPA 上限。
+
 AI 收到 `scale-advisory` 时会审查并 PR 调整 HPA 参数。
 
 ## 六、熔断与冷却
