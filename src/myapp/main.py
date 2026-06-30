@@ -16,6 +16,9 @@ from myapp.utils.telemetry import setup_telemetry
 
 logger = get_logger(__name__)
 
+# 高 QPS 告警只应统计业务流量，避免探针和 Prometheus 抓取流量放大计数。
+METRICS_EXCLUDED_HANDLERS = ("/health/live", "/health/ready", "/metrics")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -53,7 +56,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     register_exception_handlers(app)
 
     # Prometheus /metrics 端点
-    Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
+    Instrumentator(excluded_handlers=list(METRICS_EXCLUDED_HANDLERS)).instrument(app).expose(
+        app,
+        endpoint="/metrics",
+        include_in_schema=False,
+    )
     register_response_middleware(app)
 
     return app
