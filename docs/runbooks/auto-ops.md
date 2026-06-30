@@ -152,7 +152,17 @@ HPA 配置：
 - `maxReplicas: 10`
 - CPU 目标 70%，内存 80%
 
-AI 收到 `scale-advisory` 时会审查并 PR 调整 HPA 参数。
+AI 收到 `scale-advisory` 时会先审查配置与指标噪声，再决定是否 PR 调整 HPA 参数：
+
+1. 检查 `.env.example` 与 `src/myapp/config.py` 的 `DATABASE_URL` 是否仍指向
+   Docker Compose 暴露的宿主机 `5433`。
+2. 检查 `docker-compose.yml` 中 PostgreSQL 是否保持 `5433:5432` 映射，且
+   health check 使用 `pg_isready -U myapp -d myapp`。
+3. 检查 `/health/live`、`/health/ready` 与 `/metrics` 是否被排除在
+   `http_requests_total` 之外，避免 Kubernetes 探针和 Prometheus 抓取流量放大
+   `MyAppHighQPS` 告警。
+4. 若确认业务流量持续偏高且资源指标接近阈值，再调整 `deploy/k8s/deployment-hpa.yaml`
+   的副本上限或资源目标。
 
 ## 六、熔断与冷却
 

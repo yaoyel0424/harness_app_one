@@ -6,6 +6,8 @@ import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
 
+from myapp.main import METRICS_EXCLUDED_HANDLERS
+
 
 def _data(response_json: dict[str, Any]) -> Any:
     """从统一包络中取出 data 字段。"""
@@ -52,6 +54,26 @@ async def test_metrics_endpoint(client: AsyncClient) -> None:
     response = await client.get("/metrics")
     assert response.status_code == 200
     assert "http" in response.text.lower() or len(response.text) > 0
+
+
+@pytest.mark.asyncio
+async def test_metrics_excludes_probe_and_scrape_requests(client: AsyncClient) -> None:
+    """QPS 指标应排除健康探针和 Prometheus 抓取流量。"""
+    for path in METRICS_EXCLUDED_HANDLERS:
+        response = await client.get(path)
+        assert response.status_code == 200
+
+    business_response = await client.get("/items")
+    assert business_response.status_code == 200
+
+    metrics_response = await client.get("/metrics")
+    assert metrics_response.status_code == 200
+    metrics_text = metrics_response.text
+
+    for path in METRICS_EXCLUDED_HANDLERS:
+        assert f'handler="{path}"' not in metrics_text
+
+    assert 'handler="/items"' in metrics_text
 
 
 @pytest.mark.asyncio
